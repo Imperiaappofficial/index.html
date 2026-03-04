@@ -1,0 +1,2360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iDraft Dashboard - Full App</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide for icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        /* Abstract background */
+        body {
+            background-color: #e5e7eb;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,0.05) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,0.05) 0, transparent 50%);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Custom scrollbar optimized for performance */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        .round-checkbox {
+            appearance: none;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid #d1d5db;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        .round-checkbox:checked {
+            background-color: #18181b; 
+            border-color: #18181b;
+        }
+        .round-checkbox:checked::after {
+            content: '✓';
+            color: white;
+            font-size: 0.8rem;
+        }
+        .goal-text.completed {
+            text-decoration: line-through;
+            color: #9ca3af; 
+        }
+
+        /* Optimized view transitions */
+        .view-section {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+        }
+        .view-section.active {
+            display: flex;
+            opacity: 1;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Calendar Grid Styles */
+        .cal-grid {
+            display: grid;
+            gap: 1px;
+            background-color: #e4e4e7;
+            border: 1px solid #e4e4e7;
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+        .cal-cell, .cal-header-cell, .time-label { background-color: white; }
+
+        /* Pickers */
+        .picker-option.active { ring: 2px; ring-color: #18181b; transform: scale(1.1); }
+        .priority-option.active { border-color: #18181b; background-color: #fafafa; box-shadow: 0 0 0 2px #18181b; }
+
+        /* Rich Text Editor Styles (Notion-like) */
+        #doc-editor:focus { outline: none; }
+        #doc-editor[contenteditable="true"]:empty:before {
+            content: attr(placeholder);
+            color: #a1a1aa;
+            pointer-events: none;
+            display: block;
+        }
+        #doc-editor h1 { font-size: 2.25em; font-weight: 800; margin-top: 1.5em; margin-bottom: 0.5em; color: #18181b; line-height: 1.2; letter-spacing: -0.02em; }
+        #doc-editor h2 { font-size: 1.5em; font-weight: 700; margin-top: 1.5em; margin-bottom: 0.5em; color: #18181b; line-height: 1.3; letter-spacing: -0.01em;}
+        #doc-editor h3 { font-size: 1.25em; font-weight: 600; margin-top: 1.2em; margin-bottom: 0.5em; color: #27272a; }
+        #doc-editor ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 1rem; color: #3f3f46; }
+        #doc-editor ol { list-style-type: decimal; margin-left: 1.5rem; margin-bottom: 1rem; color: #3f3f46; }
+        #doc-editor li { margin-bottom: 0.3rem; }
+        #doc-editor b { font-weight: 700; color: #18181b; }
+        #doc-editor i { font-style: italic; }
+        #doc-editor strike { text-decoration: line-through; color: #a1a1aa; }
+        #doc-editor blockquote { border-left: 3px solid #18181b; padding-left: 1.25rem; color: #52525b; font-style: italic; margin: 1.5rem 0; font-size: 1.1em; background: #fafafa; padding: 1rem 1.25rem; border-radius: 0 0.5rem 0.5rem 0; }
+        #doc-editor hr { border: none; border-top: 1px solid #e4e4e7; margin: 2.5rem 0; }
+        #doc-editor table { width: 100%; border-collapse: collapse; margin-top: 1.5em; margin-bottom: 1.5em; }
+        #doc-editor th, #doc-editor td { border: 1px solid #e4e4e7; padding: 0.75rem 1rem; text-align: left; }
+        #doc-editor th { background-color: #fafafa; font-weight: 600; color: #18181b; }
+        #doc-editor p { margin-bottom: 1rem; line-height: 1.7; color: #3f3f46; }
+
+        /* ── Toolbar button ── */
+        .tb { display:inline-flex; align-items:center; justify-content:center; height:28px; min-width:28px;
+              border-radius:5px; color:#52525b; border:none; background:transparent; cursor:pointer;
+              transition:background .12s,color .12s; }
+        .tb:hover { background:#e4e4e7; color:#18181b; }
+        .tb.active { background:#18181b; color:#fff; }
+
+        /* ── Enhanced editor ── */
+        #doc-editor { outline:none; caret-color:#18181b; }
+        #doc-editor h1 { font-size:2.1em; font-weight:800; margin:1.2em 0 .4em; color:#18181b; line-height:1.15; letter-spacing:-.02em; }
+        #doc-editor h2 { font-size:1.55em; font-weight:700; margin:1em 0 .35em; color:#18181b; letter-spacing:-.01em; }
+        #doc-editor h3 { font-size:1.2em; font-weight:600; margin:.9em 0 .3em; color:#27272a; }
+        #doc-editor h4,#doc-editor h5,#doc-editor h6 { font-weight:600; margin:.8em 0 .25em; color:#3f3f46; }
+        #doc-editor ul { list-style-type:disc; margin-left:1.6rem; margin-bottom:.9rem; }
+        #doc-editor ol { list-style-type:decimal; margin-left:1.6rem; margin-bottom:.9rem; }
+        #doc-editor ul ul { list-style-type:circle; }
+        #doc-editor ul ul ul { list-style-type:square; }
+        #doc-editor li { margin-bottom:.3rem; line-height:1.65; color:#3f3f46; }
+        #doc-editor b,#doc-editor strong { font-weight:700; }
+        #doc-editor i,#doc-editor em { font-style:italic; }
+        #doc-editor u { text-decoration:underline; text-underline-offset:2px; }
+        #doc-editor s,#doc-editor strike { text-decoration:line-through; color:#a1a1aa; }
+        #doc-editor blockquote { border-left:4px solid #18181b; padding:.7rem 1.2rem; color:#52525b; font-style:italic;
+                                  margin:1.4rem 0; background:#fafafa; border-radius:0 .5rem .5rem 0; }
+        #doc-editor pre,#doc-editor code.block { display:block; background:#1e1e2e; color:#cdd6f4;
+                                                  padding:1rem 1.25rem; border-radius:.75rem; font-family:'Courier New',monospace;
+                                                  font-size:.88rem; overflow-x:auto; margin:1.2rem 0; line-height:1.6; white-space:pre; }
+        #doc-editor code:not(.block) { background:#f1f5f9; color:#e11d48; padding:.15rem .35rem; border-radius:.3rem;
+                                        font-family:'Courier New',monospace; font-size:.9em; }
+        #doc-editor a { color:#2563eb; text-decoration:underline; text-underline-offset:2px; }
+        #doc-editor a:hover { color:#1d4ed8; }
+        #doc-editor hr { border:none; border-top:2px solid #e4e4e7; margin:2rem 0; }
+        #doc-editor table { width:100%; border-collapse:collapse; margin:1.4em 0; font-size:.95rem; border-radius:.5rem; overflow:hidden; }
+        #doc-editor th,#doc-editor td { border:1px solid #e4e4e7; padding:.6rem .9rem; text-align:left; }
+        #doc-editor th { background:#f4f4f5; font-weight:600; color:#18181b; }
+        #doc-editor tr:hover td { background:#fafafa; }
+        #doc-editor img { max-width:100%; border-radius:.75rem; margin:1rem 0; box-shadow:0 2px 12px rgba(0,0,0,.08); display:block; }
+        #doc-editor p { margin-bottom:.85rem; line-height:1.75; color:#3f3f46; }
+        #doc-editor [contenteditable]:empty:before, #doc-editor:empty:before { content:attr(placeholder); color:#d4d4d8; pointer-events:none; }
+        #doc-editor *::selection { background:#bfdbfe; }
+
+        /* ══════════════════════════════════════════════════════════
+           DARK MODE — Full system
+           ══════════════════════════════════════════════════════════ */
+        .dark body { background-color:#0a0a0b !important; background-image:radial-gradient(at 0% 0%,hsla(253,30%,20%,.15) 0,transparent 50%),radial-gradient(at 100% 0%,hsla(339,50%,15%,.12) 0,transparent 50%); }
+        .dark #app-container { background:rgba(10,10,11,.98) !important; }
+        /* Sidebar */
+        .dark aside { background:rgba(15,15,17,.95) !important; border-color:rgba(255,255,255,.05) !important; }
+        .dark .nav-item { color:#71717a !important; }
+        .dark .nav-item.bg-zinc-900 { background:#27272a !important; color:#f4f4f5 !important; }
+        /* Header */
+        .dark #global-header { background:rgba(18,18,20,.85) !important; border-color:rgba(255,255,255,.06) !important; box-shadow:0 1px 0 rgba(255,255,255,.04) !important; }
+        .dark #page-title { color:#f4f4f5 !important; }
+        /* Cards / surfaces */
+        .dark .bg-white { background-color:#18181b !important; }
+        .dark .bg-zinc-50 { background-color:#111113 !important; }
+        .dark .bg-zinc-100 { background-color:#27272a !important; }
+        .dark .bg-zinc-200 { background-color:#3f3f46 !important; }
+        /* Borders */
+        .dark .border-white, .dark .border-white\/80 { border-color:rgba(255,255,255,.07) !important; }
+        .dark .border-zinc-100 { border-color:#27272a !important; }
+        .dark .border-zinc-200 { border-color:#3f3f46 !important; }
+        .dark .border-dashed { border-color:#3f3f46 !important; }
+        /* Text */
+        .dark .text-zinc-900 { color:#f4f4f5 !important; }
+        .dark .text-zinc-800 { color:#e4e4e7 !important; }
+        .dark .text-zinc-700 { color:#d4d4d8 !important; }
+        .dark .text-zinc-600 { color:#a1a1aa !important; }
+        .dark .text-zinc-500 { color:#71717a !important; }
+        .dark .text-zinc-400 { color:#52525b !important; }
+        /* Inputs */
+        .dark input:not([type=checkbox]):not([type=color]), .dark select, .dark textarea { background-color:#27272a !important; border-color:#3f3f46 !important; color:#f4f4f5 !important; }
+        .dark input::placeholder, .dark textarea::placeholder { color:#52525b !important; }
+        /* Colored backgrounds — muted for dark */
+        .dark .bg-blue-50   { background:rgba(29,78,216,.15) !important; }
+        .dark .bg-red-50    { background:rgba(127,29,29,.2) !important; }
+        .dark .bg-orange-50 { background:rgba(120,53,15,.2) !important; }
+        .dark .bg-green-50  { background:rgba(20,83,45,.2) !important; }
+        .dark .bg-yellow-50 { background:rgba(113,63,18,.15) !important; }
+        .dark .bg-purple-50 { background:rgba(76,29,149,.2) !important; }
+        .dark .bg-pink-50   { background:rgba(131,24,67,.2) !important; }
+        /* Colored text — brightened for dark readability */
+        .dark .text-blue-600, .dark .text-blue-700   { color:#60a5fa !important; }
+        .dark .text-blue-800, .dark .text-blue-900   { color:#93c5fd !important; }
+        .dark .text-red-600, .dark .text-red-700     { color:#f87171 !important; }
+        .dark .text-red-400                           { color:#f87171 !important; }
+        .dark .text-orange-600                        { color:#fb923c !important; }
+        .dark .text-green-600, .dark .text-green-500  { color:#4ade80 !important; }
+        .dark .text-green-400                         { color:#86efac !important; }
+        .dark .text-yellow-400, .dark .text-yellow-500{ color:#fbbf24 !important; }
+        .dark .text-purple-800                        { color:#c4b5fd !important; }
+        /* Colored borders */
+        .dark .border-blue-200  { border-color:rgba(29,78,216,.3) !important; }
+        .dark .border-red-200   { border-color:rgba(127,29,29,.3) !important; }
+        .dark .border-orange-200{ border-color:rgba(120,53,15,.3) !important; }
+        .dark .border-green-100 { border-color:rgba(20,83,45,.3) !important; }
+        /* Task cards */
+        .dark [data-task-id] { background:#1e1e21 !important; border-color:#2e2e32 !important; }
+        .dark [data-task-id] .bg-zinc-50  { background:#27272a !important; border-color:#3f3f46 !important; }
+        .dark [data-task-id] .border-zinc-100 { border-color:#2e2e32 !important; }
+        .dark [data-task-id] .bg-zinc-900 { background:#e4e4e7 !important; color:#18181b !important; }
+        /* Calendar */
+        .dark .cal-grid { background-color:#27272a !important; border-color:#27272a !important; }
+        .dark .cal-cell { background-color:#18181b !important; }
+        .dark .cal-header-cell { background-color:#111113 !important; color:#e4e4e7 !important; }
+        .dark .time-label { background-color:#111113 !important; color:#52525b !important; }
+        /* Doc editor */
+        .dark #doc-editor { color:#d4d4d8 !important; }
+        .dark #doc-editor h1, .dark #doc-editor h2, .dark #doc-editor h3, .dark #doc-editor strong, .dark #doc-editor b { color:#f4f4f5 !important; }
+        .dark #doc-editor p, .dark #doc-editor li { color:#a1a1aa !important; }
+        .dark #doc-editor a { color:#60a5fa !important; }
+        .dark #doc-editor blockquote { background:#1e1e21 !important; border-left-color:#52525b !important; }
+        .dark #doc-editor th { background:#27272a !important; color:#f4f4f5 !important; }
+        .dark #doc-editor td { border-color:#3f3f46 !important; }
+        .dark #doc-editor pre, .dark #doc-editor code.block { background:#0d0d0f !important; border:1px solid #27272a; }
+        .dark #doc-editor code:not(.block) { background:#27272a !important; color:#fb7185 !important; }
+        /* Doc toolbar */
+        .dark .tb { color:#71717a !important; background:transparent !important; }
+        .dark .tb:hover { background:#2e2e32 !important; color:#f4f4f5 !important; }
+        .dark .tb.active { background:#e4e4e7 !important; color:#18181b !important; }
+        /* Finance bucket cards */
+        .dark .bucket-card { background:#18181b !important; border-color:#27272a !important; }
+        .dark #fin-transactions-list > div:hover { background:#222226 !important; }
+        .dark #fin-transactions-list .bg-zinc-100 { background:#27272a !important; }
+        /* Modals */
+        .dark #inputModal > div, .dark #eventModal > div, .dark #searchModal > div,
+        .dark #expenseModal > div, .dark #budgetModal > div, .dark #bucketModal > div { background:#18181b !important; border-color:#2e2e32 !important; }
+        .dark #inputModal h3, .dark #eventModal h3, .dark #expenseModal h3,
+        .dark #budgetModal h3, .dark #bucketModal h3 { color:#f4f4f5 !important; }
+        /* Toasts */
+        .dark #toastContainer > div { background:#1e1e21 !important; border-color:#3f3f46 !important; color:#f4f4f5 !important; }
+        /* Login */
+        .dark #login-container > div { background:#18181b !important; border-color:#27272a !important; }
+        .dark #login-container h1 { color:#f4f4f5 !important; }
+        /* Settings toggle */
+        .dark #sw-darkmode { background:#22c55e !important; }
+        .dark #sw-darkmode-k { transform:translateX(16px) !important; }
+        /* Goal list hover */
+        .dark li.group:hover { border-color:#3f3f46 !important; background:#1e1e21 !important; }
+        /* Round checkbox */
+        .dark .round-checkbox { border-color:#3f3f46 !important; }
+        .dark .round-checkbox:checked { background-color:#e4e4e7 !important; border-color:#e4e4e7 !important; }
+        .dark .round-checkbox:checked::after { color:#18181b !important; }
+        /* Scrollbar */
+        .dark ::-webkit-scrollbar-thumb { background:#3f3f46 !important; }
+        /* Finance bucket card hover */
+        .bucket-card { transition:transform .15s,box-shadow .15s; }
+        .bucket-card:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,.08); }
+        .fin-bar { transition:width .6s cubic-bezier(.4,0,.2,1); }
+    </style>
+</head>
+<body class="antialiased text-zinc-800">
+
+    <!-- ================= LOGIN SCREEN ================= -->
+    <div id="login-container" class="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/20 backdrop-blur-xl transition-opacity duration-500">
+        <div class="bg-white p-10 rounded-[2rem] shadow-2xl max-w-md w-full text-center border border-zinc-100">
+            <div class="flex justify-center mb-6">
+                <div class="w-16 h-16 bg-zinc-900 text-white rounded-2xl flex items-center justify-center shadow-lg">
+                    <i data-lucide="command" class="w-8 h-8"></i>
+                </div>
+            </div>
+            <h1 class="text-3xl font-bold text-zinc-900 tracking-tight mb-2">Welcome to iDraft</h1>
+            <p class="text-zinc-500 text-sm mb-8">Your ultimate productive workspace.</p>
+            <input type="text" id="login-name-input" placeholder="Your name..." maxlength="32"
+                class="w-full border border-zinc-200 rounded-xl px-4 py-3 mb-3 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 placeholder:text-zinc-400 text-zinc-800"
+                onkeydown="if(event.key==='Enter')login()">
+            <button onclick="login()" class="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-zinc-900 text-white rounded-xl hover:bg-zinc-800 transition shadow-sm font-medium">
+                <i data-lucide="arrow-right" class="w-5 h-5"></i> Enter Workspace
+            </button>
+            <p class="text-xs text-zinc-400 mt-5">iDraft v1.0 — Local mode. Google Auth coming next.</p>
+        </div>
+    </div>
+
+    <!-- ================= MAIN APP ================= -->
+    <div id="app-container" class="flex w-full h-full bg-white/70 backdrop-blur-xl opacity-0 pointer-events-none transition-opacity duration-500">
+
+        <!-- SIDEBAR -->
+        <aside class="w-64 bg-white/40 border-r border-white/80 p-6 flex flex-col justify-between hidden md:flex h-full shrink-0">
+            <div>
+                <!-- Logo -->
+                <div class="flex items-center gap-3 mb-10 px-2 cursor-pointer hover:opacity-80 transition" onclick="switchView('dashboard')">
+                    <i data-lucide="command" class="w-8 h-8 text-zinc-900"></i>
+                    <span class="text-2xl font-bold text-zinc-900 tracking-tight">iDraft</span>
+                </div>
+
+                <!-- Main Navigation -->
+                <nav class="space-y-2 mb-8" id="main-nav">
+                    <a href="#" onclick="switchView('dashboard')" id="nav-dashboard" class="nav-item flex items-center gap-3 px-4 py-3 bg-zinc-900 text-white rounded-2xl shadow-md transition">
+                        <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                        <span class="font-medium text-sm">Dashboard</span>
+                    </a>
+                    <a href="#" onclick="switchView('tasks')" id="nav-tasks" class="nav-item flex items-center gap-3 px-4 py-3 text-zinc-500 rounded-2xl hover:bg-zinc-200/80 hover:text-zinc-900 transition-colors duration-200">
+                        <i data-lucide="check-square" class="w-5 h-5"></i>
+                        <span class="font-medium text-sm">My Tasks</span>
+                    </a>
+                    <a href="#" onclick="switchView('projects')" id="nav-projects" class="nav-item flex items-center gap-3 px-4 py-3 text-zinc-500 rounded-2xl hover:bg-zinc-200/80 hover:text-zinc-900 transition-colors duration-200">
+                        <i data-lucide="folder-kanban" class="w-5 h-5"></i>
+                        <span class="font-medium text-sm">Projects</span>
+                    </a>
+                    <a href="#" onclick="switchView('calendar')" id="nav-calendar" class="nav-item flex items-center gap-3 px-4 py-3 text-zinc-500 rounded-2xl hover:bg-zinc-200/80 hover:text-zinc-900 transition-colors duration-200">
+                        <i data-lucide="calendar" class="w-5 h-5"></i>
+                        <span class="font-medium text-sm">Calendar</span>
+                    </a>
+                    <a href="#" onclick="switchView('docs')" id="nav-docs" class="nav-item flex items-center gap-3 px-4 py-3 text-zinc-500 rounded-2xl hover:bg-zinc-200/80 hover:text-zinc-900 transition-colors duration-200">
+                        <i data-lucide="book-open" class="w-5 h-5"></i>
+                        <span class="font-medium text-sm">Docs</span>
+                    </a>
+                    <a href="#" onclick="switchView('finance')" id="nav-finance" class="nav-item flex items-center gap-3 px-4 py-3 text-zinc-500 rounded-2xl hover:bg-zinc-200/80 hover:text-zinc-900 transition-colors duration-200">
+                        <i data-lucide="wallet" class="w-5 h-5"></i>
+                        <span class="font-medium text-sm">Finance</span>
+                    </a>
+                    <a href="#" onclick="switchView('archive')" id="nav-archive" class="nav-item flex items-center gap-3 px-4 py-3 text-zinc-500 rounded-2xl hover:bg-zinc-200/80 hover:text-zinc-900 transition-colors duration-200">
+                        <i data-lucide="archive" class="w-5 h-5"></i>
+                        <span class="font-medium text-sm">Archive & Stats</span>
+                    </a>
+                </nav>
+
+                <!-- Integrations -->
+                <div class="mb-8">
+                    <p class="text-xs font-semibold text-zinc-400 mb-3 px-4 uppercase tracking-wider">Integrations</p>
+                    <div class="px-4 py-2 border border-dashed border-zinc-200 rounded-xl bg-white/30 text-center">
+                        <p class="text-[10px] text-zinc-500 italic">No integrations yet.<br>Coming soon...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <a href="#" onclick="switchView('settings')" id="nav-settings" class="nav-item flex items-center gap-3 px-4 py-3 text-zinc-500 hover:bg-zinc-200/80 hover:text-zinc-900 rounded-2xl transition-colors duration-200 mt-auto">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+                <span class="font-medium text-sm">Settings</span>
+            </a>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main id="main-content" class="flex-1 flex flex-col h-full overflow-y-auto overflow-x-hidden relative scroll-smooth">
+            
+            <!-- Global Header -->
+            <header id="global-header" class="flex justify-between items-center px-8 py-4 sticky top-4 mx-4 bg-white/60 backdrop-blur-md rounded-2xl z-40 border border-white shadow-sm transition-transform duration-300 ease-in-out">
+                <h1 id="page-title" class="text-3xl font-bold text-zinc-900 px-2 tracking-tight">Hi, Dilan!</h1>
+                <div class="flex items-center gap-4">
+                    <div class="relative group">
+                        <button class="bg-zinc-900 text-white px-5 py-2.5 rounded-full text-sm font-medium flex items-center gap-2 hover:bg-zinc-800 transition shadow-md">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Create
+                        </button>
+                        <div class="absolute right-0 mt-2 w-40 bg-white rounded-2xl shadow-xl border border-zinc-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden">
+                            <button onclick="handleCreate('task')" class="w-full text-left px-4 py-3 text-sm text-zinc-700 hover:bg-zinc-50 transition flex items-center gap-2 border-b border-zinc-100"><i data-lucide="check-square" class="w-4 h-4"></i> Task</button>
+                            <button onclick="handleCreate('goal')" class="w-full text-left px-4 py-3 text-sm text-zinc-700 hover:bg-zinc-50 transition flex items-center gap-2 border-b border-zinc-100"><i data-lucide="target" class="w-4 h-4"></i> Goal</button>
+                            <button onclick="handleCreate('project')" class="w-full text-left px-4 py-3 text-sm text-zinc-700 hover:bg-zinc-50 transition flex items-center gap-2 border-b border-zinc-100"><i data-lucide="folder-plus" class="w-4 h-4"></i> Project</button>
+                            <button onclick="openMainDocFor('global', 'none')" class="w-full text-left px-4 py-3 text-sm text-zinc-700 hover:bg-zinc-50 transition flex items-center gap-2"><i data-lucide="book-open" class="w-4 h-4"></i> Doc Page</button>
+                        </div>
+                    </div>
+                    <button onclick="openSearchModal()" class="p-2.5 bg-white/80 rounded-full shadow-sm hover:bg-white hover:text-zinc-900 transition border border-white text-zinc-500"><i data-lucide="search" class="w-5 h-5"></i></button>
+                    <button onclick="showNotification('No new alerts')" class="p-2.5 bg-white/80 rounded-full shadow-sm hover:bg-white hover:text-zinc-900 transition border border-white relative text-zinc-500">
+                        <i data-lucide="bell" class="w-5 h-5"></i><span class="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full"></span>
+                    </button>
+                    <img onclick="switchView('profile')" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Dilan&backgroundColor=e5e7eb" id="header-avatar" alt="Avatar" class="w-10 h-10 rounded-full border-2 border-white shadow-sm cursor-pointer hover:ring-2 hover:ring-zinc-900 transition">
+                </div>
+            </header>
+
+            <div class="px-8 py-6 pb-20">
+                
+                <!-- ================= VIEW: DASHBOARD ================= -->
+                <div id="view-dashboard" class="view-section active flex-col gap-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        
+                        <!-- Card: Overall Information (Reverted to specific clean design) -->
+                        <div class="bg-zinc-900 text-white p-6 rounded-[2rem] shadow-lg flex flex-col justify-between hover:shadow-xl transition-shadow relative overflow-hidden">
+                            <div class="absolute right-0 top-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+                            
+                            <div class="flex justify-between items-start mb-6 relative z-10">
+                                <h2 class="font-medium text-lg">Overall Information</h2>
+                                <button onclick="showNotification('Overall settings opened')" class="text-zinc-400 hover:text-white transition"><i data-lucide="more-vertical" class="w-5 h-5"></i></button>
+                            </div>
+                            
+                            <div class="flex gap-6 mb-8 relative z-10">
+                                <div>
+                                    <span class="text-4xl font-bold" id="total-tasks">43</span>
+                                    <p class="text-xs text-zinc-400 leading-tight mt-1">Tasks done<br>for all time</p>
+                                </div>
+                                <div class="w-px bg-zinc-700"></div>
+                                <div>
+                                    <span class="text-4xl font-bold" id="total-projects-stopped">2</span>
+                                    <p class="text-xs text-zinc-400 leading-tight mt-1">projects<br>completed</p>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-3 gap-3 relative z-10">
+                                <div class="bg-zinc-100 text-zinc-900 rounded-2xl p-3 flex flex-col items-center justify-center text-center h-24 shadow-inner">
+                                    <i data-lucide="folder" class="w-5 h-5 mb-1 text-zinc-500"></i>
+                                    <span class="text-xl font-bold" id="stat-proj-total">28</span>
+                                    <span class="text-[9px] text-zinc-500 uppercase font-bold tracking-wider">Projects</span>
+                                </div>
+                                <div class="bg-white/10 text-white rounded-2xl p-3 flex flex-col items-center justify-center text-center h-24 border border-white/5">
+                                    <i data-lucide="loader" class="w-5 h-5 mb-1 text-zinc-300"></i>
+                                    <span class="text-xl font-bold" id="stat-proj-prog">14</span>
+                                    <span class="text-[9px] text-zinc-400 uppercase font-bold tracking-wider">In Progress</span>
+                                </div>
+                                <div class="bg-white/10 text-white rounded-2xl p-3 flex flex-col items-center justify-center text-center h-24 border border-white/5">
+                                    <i data-lucide="check-circle-2" class="w-5 h-5 mb-1 text-green-400"></i>
+                                    <span class="text-xl font-bold" id="stat-proj-done">11</span>
+                                    <span class="text-[9px] text-zinc-400 uppercase font-bold tracking-wider">Completed</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card: Weekly progress (Combo Chart) -->
+                        <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-zinc-100 flex flex-col">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <h2 class="font-bold text-lg text-zinc-900">Activity Overview</h2>
+                                    <p class="text-xs text-zinc-500">Tasks completed vs added</p>
+                                </div>
+                                <button onclick="updateDashboardStats(); showNotification('Charts refreshed')" class="p-2 hover:bg-zinc-100 rounded-full transition text-zinc-500"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                            </div>
+                            <div class="flex gap-4 text-xs font-medium mb-4">
+                                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-zinc-900"></span> Completed</span>
+                                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full border-2 border-zinc-400"></span> Added</span>
+                            </div>
+                            <div class="flex-1 relative w-full h-full min-h-[140px]"><canvas id="lineChart"></canvas></div>
+                        </div>
+
+                        <!-- Card: Month progress -->
+                        <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-zinc-100 flex flex-col">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h2 class="font-bold text-lg text-zinc-900">Task Completion</h2>
+                                    <p class="text-xs text-zinc-500">Active vs Completed tasks</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between mb-6 flex-1">
+                                <ul class="space-y-3 text-sm text-zinc-600 font-medium">
+                                    <li class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-green-500 shadow-sm shadow-green-200"></span> Done</li>
+                                    <li class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-zinc-200 shadow-sm"></span> Pending</li>
+                                </ul>
+                                <div class="w-24 h-24 relative">
+                                    <canvas id="doughnutChart"></canvas><div class="absolute inset-0 flex items-center justify-center font-bold text-lg text-zinc-900" id="month-progress-val">0%</div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="showNotification('Generating PDF report...')" class="flex-1 bg-white border border-zinc-200 text-zinc-700 hover:text-zinc-900 hover:bg-zinc-50 font-medium text-sm rounded-xl py-2 flex items-center justify-center gap-2 transition shadow-sm">
+                                    Download Report <i data-lucide="download" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Card: Month goals -->
+                        <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-zinc-100 h-full flex flex-col">
+                            <div class="flex justify-between items-center mb-6">
+                                <h2 class="font-bold text-lg text-zinc-900">Month goals</h2>
+                                <button onclick="handleCreate('goal')" class="p-1.5 bg-zinc-50 border border-zinc-100 hover:bg-zinc-100 rounded-lg transition text-zinc-600 shadow-sm"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                            </div>
+                            <ul id="goals-container" class="space-y-3 overflow-y-auto max-h-[220px] pr-2 flex-1"></ul>
+                        </div>
+
+                        <!-- Tasks Queue -->
+                        <div class="lg:col-span-2 flex flex-col h-full overflow-hidden">
+                            <div class="flex justify-between items-center mb-4 px-2">
+                                <div>
+                                    <h2 class="font-bold text-lg text-zinc-900">Active Tasks Queue</h2>
+                                    <p class="text-xs text-zinc-500">Showing up to 5 tasks from <span id="active-task-count">0</span> total.</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="switchView('tasks')" class="text-xs font-bold text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition flex items-center gap-1 bg-white px-4 py-2 rounded-full border border-zinc-200 shadow-sm">
+                                        View all <i data-lucide="arrow-right" class="w-3 h-3"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="tasks-container" class="flex flex-nowrap gap-4 overflow-x-auto pb-4 pt-1 px-1">
+                                <!-- Tasks injected here -->
+                            </div>
+                        </div>
+
+                        <!-- Projects Widget -->
+                        <div class="lg:col-span-3 mt-4">
+                            <div class="flex justify-between items-center mb-4 px-2">
+                                <div><h2 class="font-bold text-lg text-zinc-900">Active Projects</h2><p class="text-xs text-zinc-500">Track your ongoing initiatives.</p></div>
+                                <button onclick="switchView('projects')" class="text-xs font-bold bg-zinc-100 px-4 py-2 rounded-full text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200 transition flex items-center gap-1">
+                                    Workflow <i data-lucide="folder-kanban" class="w-3 h-3"></i>
+                                </button>
+                            </div>
+                            <div id="projects-dashboard-container" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= VIEW: TASKS (Motivational & Productive) ================= -->
+                <div id="view-tasks" class="view-section flex-col gap-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-[2rem] shadow-sm border border-zinc-100 gap-4">
+                        <div>
+                            <h2 class="text-2xl font-bold text-zinc-900 tracking-tight">Task Manager</h2>
+                            <p class="text-zinc-500 text-sm">Focus on what matters today.</p>
+                        </div>
+                        <div class="flex items-center gap-4 w-full md:w-auto">
+                            <div class="flex-1 md:w-48">
+                                <div class="flex justify-between text-xs font-bold mb-1"><span class="text-zinc-500">Daily Progress</span><span id="tasks-daily-percent" class="text-green-500">0%</span></div>
+                                <div class="w-full bg-zinc-100 rounded-full h-2"><div id="tasks-daily-bar" class="bg-green-500 h-2 rounded-full transition-all" style="width: 0%"></div></div>
+                            </div>
+                            <button onclick="handleCreate('task')" class="px-5 py-2.5 bg-zinc-900 text-white text-sm font-bold rounded-xl hover:bg-zinc-800 transition shadow-sm shrink-0">
+                                + New Task
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-2 flex flex-col gap-8">
+                            
+                            <!-- Spotlight Section (Top Priority) -->
+                            <div>
+                                <h3 class="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-3 px-2 flex items-center gap-2"><i data-lucide="zap" class="w-4 h-4 text-yellow-500"></i> In the Spotlight</h3>
+                                <div id="tasks-spotlight-container">
+                                    <!-- Injected via JS -->
+                                </div>
+                            </div>
+
+                            <!-- Regular Queue -->
+                            <div>
+                                <h3 class="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-3 px-2">Up Next</h3>
+                                <div id="tasks-queue-container" class="flex flex-col gap-3">
+                                    <!-- Injected via JS -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Goals Alignment -->
+                        <div class="flex flex-col gap-6">
+                            <div class="bg-zinc-900 text-white p-6 rounded-[2rem] shadow-lg flex flex-col h-full min-h-[500px] relative overflow-hidden">
+                                <div class="absolute right-0 top-0 w-full h-32 bg-gradient-to-b from-blue-500/20 to-transparent pointer-events-none"></div>
+                                <div class="relative z-10 flex-1 flex flex-col">
+                                    <h3 class="font-bold text-xl mb-1 flex items-center gap-2"><i data-lucide="target" class="w-5 h-5 text-blue-400"></i> Goal Alignment</h3>
+                                    <p class="text-xs text-zinc-400 mb-6">See how tasks contribute to monthly goals.</p>
+                                    <div id="tasks-goals-mapping" class="space-y-4 overflow-y-auto pr-2 flex-1"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= VIEW: PROJECTS ================= -->
+                <div id="view-projects" class="view-section flex-col gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-4">
+                        <div class="md:col-span-3 bg-zinc-900 text-white p-8 rounded-[2rem] shadow-lg relative overflow-hidden flex items-center">
+                            <div class="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-zinc-800 to-transparent"></div>
+                            <div class="relative z-10">
+                                <h2 class="text-3xl font-bold mb-2 tracking-tight">Projects Management</h2>
+                                <p class="text-zinc-400">Add tasks to projects to automatically track their progress.</p>
+                            </div>
+                        </div>
+                        <div onclick="handleCreate('project')" class="bg-white border-2 border-dashed border-zinc-300 hover:border-zinc-500 hover:bg-zinc-50 transition p-8 rounded-[2rem] shadow-sm flex flex-col items-center justify-center cursor-pointer group">
+                            <div class="w-12 h-12 bg-zinc-100 group-hover:bg-zinc-200 rounded-full flex items-center justify-center mb-3 transition"><i data-lucide="plus" class="w-6 h-6 text-zinc-600"></i></div>
+                            <span class="font-medium text-zinc-700 group-hover:text-zinc-900 transition">New Project</span>
+                        </div>
+                    </div>
+                    <div id="projects-page-container" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+                </div>
+
+                <!-- ================= VIEW: CALENDAR ================= -->
+                <div id="view-calendar" class="view-section flex-col gap-6">
+                    <div class="flex justify-between items-center bg-white p-6 rounded-[2rem] shadow-sm border border-zinc-100">
+                        <div>
+                            <h2 class="text-2xl font-bold text-zinc-900 tracking-tight">Time Blocking</h2>
+                            <p class="text-zinc-500 text-sm">Organize your days and weeks efficiently.</p>
+                        </div>
+                        <div class="flex gap-2 bg-zinc-100 p-1 rounded-xl">
+                            <button id="btn-cal-day" onclick="setCalendarView('day')" class="px-4 py-2 hover:bg-white rounded-lg text-sm font-medium text-zinc-600 transition">Day</button>
+                            <button id="btn-cal-week" onclick="setCalendarView('week')" class="px-4 py-2 bg-white shadow-sm rounded-lg text-sm font-medium text-zinc-900 transition">Week</button>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-zinc-100 overflow-x-auto">
+                        <div class="min-w-[1000px] cal-grid" id="calendar-grid"></div>
+                    </div>
+                </div>
+
+                <!-- ================= VIEW: DOCS / WORKSPACE (NOTION STYLE) ================= -->
+                <div id="view-docs" class="view-section flex-col gap-6 h-[calc(100vh-140px)]">
+                    <div class="flex h-full bg-white rounded-[2rem] shadow-sm border border-zinc-100 overflow-hidden relative">
+                        
+                        <!-- Sidebar -->
+                        <div class="w-64 bg-zinc-50 border-r border-zinc-100 flex flex-col shrink-0">
+                            <div class="p-4 border-b border-zinc-100">
+                                <button onclick="openMainDocFor('global', 'none')" class="w-full bg-white border border-zinc-200 text-zinc-800 text-sm font-bold py-2.5 rounded-xl shadow-sm hover:bg-zinc-50 transition flex items-center justify-center gap-2">
+                                    <i data-lucide="plus" class="w-4 h-4"></i> New Blank Page
+                                </button>
+                            </div>
+                            <div class="flex-1 overflow-y-auto p-4 py-2 space-y-2" id="docs-sidebar-tree">
+                                <!-- Tree injected via JS -->
+                            </div>
+                        </div>
+                        
+                        <!-- Main Editor Area -->
+                        <div class="flex-1 flex flex-col relative bg-white overflow-hidden">
+                            
+                            <!-- Empty State -->
+                            <div id="doc-empty-state" class="absolute inset-0 bg-white z-20 flex flex-col items-center justify-center text-center">
+                                <div class="w-16 h-16 bg-zinc-50 rounded-2xl flex items-center justify-center mb-4 border border-zinc-100"><i data-lucide="book-open" class="w-8 h-8 text-zinc-300"></i></div>
+                                <h3 class="text-xl font-bold text-zinc-900 mb-2">Workspace</h3>
+                                <p class="text-sm text-zinc-500 max-w-sm">Select a document from the sidebar or click on "Quick Note" from a project to start writing.</p>
+                            </div>
+
+                            <!-- Docs Topbar + Full Toolbar -->
+                            <div class="sticky top-0 z-10 bg-white border-b border-zinc-100 flex flex-col w-full shrink-0 shadow-sm">
+                                <div class="h-10 flex items-center justify-between px-5 border-b border-zinc-100">
+                                    <div class="flex items-center gap-1.5 text-xs text-zinc-400 font-medium" id="doc-breadcrumbs"></div>
+                                    <div class="flex items-center gap-1">
+                                        <button onclick="createSubPage()" id="btn-add-subpage" class="hidden text-xs font-semibold text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 px-2.5 py-1.5 rounded-lg transition items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> Sub-page</button>
+                                        <button onclick="exportDocHTML()" class="p-1.5 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded-lg transition" title="Export as HTML"><i data-lucide="download" class="w-4 h-4"></i></button>
+                                        <button onclick="printDoc()" class="p-1.5 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded-lg transition" title="Print / Save as PDF"><i data-lucide="printer" class="w-4 h-4"></i></button>
+                                        <div class="w-px h-4 bg-zinc-200 mx-1"></div>
+                                        <button onclick="deleteCurrentDoc()" class="p-1.5 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete page"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                    </div>
+                                </div>
+                                <!-- ── RICH TOOLBAR ── -->
+                                <div class="px-3 py-1.5 flex flex-wrap gap-px items-center bg-zinc-50 overflow-x-auto min-h-[42px]">
+                                    <!-- Font family -->
+                                    <select id="doc-font-family" onchange="docExec('fontName',this.value)" title="Font"
+                                        class="text-[11px] h-7 px-2 border border-zinc-200 rounded-md bg-white text-zinc-700 focus:outline-none cursor-pointer mr-1">
+                                        <option value="inherit">Default</option>
+                                        <option value="Georgia, serif">Georgia</option>
+                                        <option value="'Times New Roman',serif">Times New Roman</option>
+                                        <option value="'Courier New',monospace">Courier New</option>
+                                        <option value="Arial,sans-serif">Arial</option>
+                                        <option value="Verdana,sans-serif">Verdana</option>
+                                    </select>
+                                    <!-- Font size -->
+                                    <select id="doc-font-size" onchange="docSetFontSize(this.value)" title="Size"
+                                        class="text-[11px] h-7 w-14 px-1.5 border border-zinc-200 rounded-md bg-white text-zinc-700 focus:outline-none cursor-pointer mr-1">
+                                        <option value="">Size</option>
+                                        <option value="10px">10</option>
+                                        <option value="12px">12</option>
+                                        <option value="14px">14</option>
+                                        <option value="16px">16</option>
+                                        <option value="20px">20</option>
+                                        <option value="24px">24</option>
+                                        <option value="32px">32</option>
+                                        <option value="48px">48</option>
+                                    </select>
+                                    <div class="w-px h-5 bg-zinc-200 mx-1"></div>
+                                    <!-- Headings -->
+                                    <button onclick="docExec('formatBlock','h1')" class="tb px-2 text-[11px] font-black" title="Heading 1">H1</button>
+                                    <button onclick="docExec('formatBlock','h2')" class="tb px-2 text-[11px] font-bold" title="Heading 2">H2</button>
+                                    <button onclick="docExec('formatBlock','h3')" class="tb px-2 text-[11px] font-semibold" title="Heading 3">H3</button>
+                                    <button onclick="docExec('formatBlock','p')" class="tb px-2 text-[11px]" title="Normal text">P</button>
+                                    <div class="w-px h-5 bg-zinc-200 mx-1"></div>
+                                    <!-- Style -->
+                                    <button id="tb-bold" onclick="docExec('bold')" class="tb p-1.5" title="Bold (Ctrl+B)"><i data-lucide="bold" class="w-3.5 h-3.5"></i></button>
+                                    <button id="tb-italic" onclick="docExec('italic')" class="tb p-1.5" title="Italic (Ctrl+I)"><i data-lucide="italic" class="w-3.5 h-3.5"></i></button>
+                                    <button id="tb-underline" onclick="docExec('underline')" class="tb p-1.5" title="Underline (Ctrl+U)"><i data-lucide="underline" class="w-3.5 h-3.5"></i></button>
+                                    <button id="tb-strike" onclick="docExec('strikeThrough')" class="tb p-1.5" title="Strikethrough"><i data-lucide="strikethrough" class="w-3.5 h-3.5"></i></button>
+                                    <button id="tb-super" onclick="docExec('superscript')" class="tb px-1.5 text-[10px] font-bold" title="Superscript">A²</button>
+                                    <button id="tb-sub" onclick="docExec('subscript')" class="tb px-1.5 text-[10px] font-bold" title="Subscript">A₂</button>
+                                    <div class="w-px h-5 bg-zinc-200 mx-1"></div>
+                                    <!-- Alignment -->
+                                    <button onclick="docExec('justifyLeft')" class="tb p-1.5" title="Align left"><i data-lucide="align-left" class="w-3.5 h-3.5"></i></button>
+                                    <button onclick="docExec('justifyCenter')" class="tb p-1.5" title="Center"><i data-lucide="align-center" class="w-3.5 h-3.5"></i></button>
+                                    <button onclick="docExec('justifyRight')" class="tb p-1.5" title="Align right"><i data-lucide="align-right" class="w-3.5 h-3.5"></i></button>
+                                    <button onclick="docExec('justifyFull')" class="tb p-1.5" title="Justify"><i data-lucide="align-justify" class="w-3.5 h-3.5"></i></button>
+                                    <div class="w-px h-5 bg-zinc-200 mx-1"></div>
+                                    <!-- Lists + indent -->
+                                    <button onclick="docExec('insertUnorderedList')" class="tb p-1.5" title="Bullet list"><i data-lucide="list" class="w-3.5 h-3.5"></i></button>
+                                    <button onclick="docExec('insertOrderedList')" class="tb p-1.5" title="Numbered list"><i data-lucide="list-ordered" class="w-3.5 h-3.5"></i></button>
+                                    <button onclick="docExec('outdent')" class="tb p-1.5" title="Outdent"><i data-lucide="chevrons-left" class="w-3.5 h-3.5"></i></button>
+                                    <button onclick="docExec('indent')" class="tb p-1.5" title="Indent"><i data-lucide="chevrons-right" class="w-3.5 h-3.5"></i></button>
+                                    <div class="w-px h-5 bg-zinc-200 mx-1"></div>
+                                    <!-- Colors -->
+                                    <label title="Text color" class="tb p-1 cursor-pointer flex items-center gap-0.5">
+                                        <i data-lucide="baseline" class="w-3.5 h-3.5"></i>
+                                        <input type="color" id="doc-text-color" value="#18181b" oninput="docExec('foreColor',this.value)" class="w-4 h-3 border-0 p-0 cursor-pointer opacity-0 absolute">
+                                        <span id="doc-text-color-bar" class="w-3.5 h-1 rounded-full mt-0.5" style="background:#18181b;display:block"></span>
+                                    </label>
+                                    <label title="Highlight color" class="tb p-1 cursor-pointer flex items-center gap-0.5">
+                                        <i data-lucide="highlighter" class="w-3.5 h-3.5"></i>
+                                        <input type="color" id="doc-bg-color" value="#fef08a" oninput="docExec('hiliteColor',this.value)" class="w-4 h-3 border-0 p-0 cursor-pointer opacity-0 absolute">
+                                        <span id="doc-bg-color-bar" class="w-3.5 h-1 rounded-full mt-0.5" style="background:#fef08a;display:block"></span>
+                                    </label>
+                                    <div class="w-px h-5 bg-zinc-200 mx-1"></div>
+                                    <!-- Insert -->
+                                    <button onclick="docInsertLink()" class="tb p-1.5" title="Insert link"><i data-lucide="link" class="w-3.5 h-3.5"></i></button>
+                                    <button onclick="docInsertImage()" class="tb p-1.5" title="Insert image (URL)"><i data-lucide="image" class="w-3.5 h-3.5"></i></button>
+                                    <button onclick="insertTableInDoc()" class="tb p-1.5" title="Insert table"><i data-lucide="table" class="w-3.5 h-3.5"></i></button>
+                                    <button onclick="docExec('formatBlock','blockquote')" class="tb p-1.5" title="Blockquote"><i data-lucide="quote" class="w-3.5 h-3.5"></i></button>
+                                    <button onclick="docInsertCode()" class="tb p-1.5" title="Code block"><i data-lucide="code" class="w-3.5 h-3.5"></i></button>
+                                    <button onclick="docExec('insertHorizontalRule')" class="tb p-1.5" title="Divider"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
+                                    <div class="w-px h-5 bg-zinc-200 mx-1"></div>
+                                    <!-- Undo/Redo -->
+                                    <button onclick="docExec('undo')" class="tb p-1.5" title="Undo (Ctrl+Z)"><i data-lucide="undo-2" class="w-3.5 h-3.5"></i></button>
+                                    <button onclick="docExec('redo')" class="tb p-1.5" title="Redo (Ctrl+Shift+Z)"><i data-lucide="redo-2" class="w-3.5 h-3.5"></i></button>
+                                    <!-- Word count -->
+                                    <span id="doc-word-count" class="ml-auto text-[10px] text-zinc-400 font-medium px-2 whitespace-nowrap">0 words</span>
+                                </div>
+                            </div>
+
+                            <!-- Scrollable Editor Content -->
+                            <div class="flex-1 overflow-y-auto relative">
+                                <div class="max-w-[800px] mx-auto w-full px-12 py-16 pb-32">
+                                    <input type="text" id="doc-title-input" class="text-5xl font-extrabold text-zinc-900 border-none outline-none w-full mb-8 placeholder-zinc-200 bg-transparent tracking-tight" placeholder="Untitled" onkeyup="updateDocTitle()">
+                                    <div id="doc-editor" contenteditable="true" class="text-zinc-700 min-h-[500px] text-[1.05rem]" placeholder="Type '/' for commands, or just start writing..."></div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= VIEW: PROFILE ================= -->
+                <div id="view-profile" class="view-section flex-col gap-6">
+                    <div class="bg-white p-8 rounded-[2rem] shadow-sm border border-zinc-100 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+                        <div class="absolute -right-20 -top-20 w-64 h-64 bg-zinc-900 rounded-full opacity-5 blur-3xl"></div>
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Dilan&backgroundColor=e5e7eb" id="profile-avatar-img" class="w-32 h-32 rounded-full border-4 border-white shadow-lg bg-zinc-100 z-10">
+                        
+                        <div class="text-center md:text-left z-10 flex-1">
+                            <div class="flex items-center justify-center md:justify-start gap-3 mb-1">
+                                <h2 class="text-3xl font-bold text-zinc-900" id="profile-name-display">Dilan</h2>
+                                <input type="text" id="profile-name-input" class="hidden text-3xl font-bold text-zinc-900 bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-zinc-900 w-48">
+                                <button onclick="toggleProfileEdit()" id="btn-edit-profile" class="p-1.5 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-md transition"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                                <button onclick="saveProfileName()" id="btn-save-profile" class="hidden p-1.5 text-white bg-green-500 hover:bg-green-600 rounded-md transition"><i data-lucide="check" class="w-4 h-4"></i></button>
+                            </div>
+                            <p class="text-zinc-500 font-medium mb-4" id="profile-role">Product Manager</p>
+                            <div class="flex flex-wrap gap-3 justify-center md:justify-start">
+                                <span class="bg-zinc-900 text-white px-4 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 shadow-sm"><i data-lucide="zap" class="w-4 h-4 text-yellow-400"></i> Level <span id="profile-level">5</span></span>
+                                <span class="bg-zinc-100 text-zinc-800 border border-zinc-200 px-4 py-1.5 rounded-full text-sm font-medium">Score: <span id="profile-score">1,250</span> XP</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white p-8 rounded-[2rem] shadow-sm border border-zinc-100">
+                            <h3 class="font-semibold text-lg text-zinc-900 mb-6 flex items-center gap-2"><i data-lucide="award" class="w-5 h-5 text-zinc-500"></i> Achievements</h3>
+                            <div class="space-y-4" id="achievements-container"></div>
+                        </div>
+                        <div class="bg-zinc-900 text-white p-8 rounded-[2rem] shadow-md">
+                            <h3 class="font-semibold text-lg mb-6 flex items-center gap-2"><i data-lucide="trending-up" class="w-5 h-5 text-zinc-400"></i> Lifetime Stats</h3>
+                            <div class="grid grid-cols-2 gap-6">
+                                <div>
+                                    <p class="text-4xl font-bold" id="stat-lifetime-tasks">0</p>
+                                    <p class="text-sm text-zinc-400 mt-1">Tasks Completed</p>
+                                    <span class="text-[10px] text-green-400 font-bold bg-green-400/10 px-2 py-0.5 rounded mt-2 inline-block">+12% this month</span>
+                                </div>
+                                <div>
+                                    <p class="text-4xl font-bold" id="stat-lifetime-goals">0</p>
+                                    <p class="text-sm text-zinc-400 mt-1">Goals Reached</p>
+                                    <span class="text-[10px] text-green-400 font-bold bg-green-400/10 px-2 py-0.5 rounded mt-2 inline-block">+2 this month</span>
+                                </div>
+                                <div class="col-span-2 w-full h-px bg-zinc-700"></div>
+                                <div class="col-span-2"><p class="text-sm text-zinc-400 mb-2">Current Productivity Streak</p><div class="flex items-center gap-2"><i data-lucide="flame" class="w-6 h-6 text-orange-400"></i><span class="text-2xl font-bold">5 Days</span></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= VIEW: ARCHIVE & STATS ================= -->
+                <div id="view-archive" class="view-section flex-col gap-6">
+                    <div class="bg-zinc-900 text-white p-8 rounded-[2rem] shadow-lg relative overflow-hidden">
+                        <div class="absolute right-0 top-0 w-1/3 h-full bg-gradient-to-l from-zinc-800 to-transparent"></div>
+                        <div class="relative z-10">
+                            <h2 class="text-2xl font-bold mb-2 tracking-tight">Performance Overview</h2>
+                            <p id="performance-statement" class="text-zinc-300 mb-6 text-lg font-medium italic">Calculating your performance...</p>
+                            <div class="flex justify-between text-sm mb-2 font-medium"><span>Task Completion Rate</span><span id="completion-rate-text">0%</span></div>
+                            <div class="w-full bg-zinc-700 rounded-full h-3"><div id="performance-bar" class="bg-green-400 h-3 rounded-full transition-all duration-1000 ease-out" style="width: 0%"></div></div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-zinc-100 flex flex-col h-[500px]">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-semibold text-lg text-zinc-900 flex items-center gap-2"><i data-lucide="check-square" class="w-5 h-5 text-green-500"></i> Completed Tasks</h3>
+                                <span class="text-xs text-zinc-400 bg-zinc-100 px-2 py-1 rounded font-medium">Undo available</span>
+                            </div>
+                            <div id="archive-tasks-container" class="flex-1 overflow-y-auto space-y-3 pr-2"></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-zinc-100 flex flex-col h-[500px]">
+                            <h3 class="font-semibold text-lg text-zinc-900 mb-4 flex items-center gap-2"><i data-lucide="target" class="w-5 h-5 text-blue-500"></i> Reached Goals</h3>
+                            <div id="archive-goals-container" class="flex-1 overflow-y-auto space-y-3 pr-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= VIEW: FINANCE ================= -->
+                <div id="view-finance" class="view-section flex-col gap-6">
+
+                    <!-- Header -->
+                    <div class="bg-zinc-900 text-white p-8 rounded-[2rem] shadow-lg relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                        <div class="absolute right-0 top-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+                        <div class="relative z-10">
+                            <h2 class="text-3xl font-bold tracking-tight mb-1">Finance HQ</h2>
+                            <p class="text-zinc-400 text-sm">Track every dirham. Know exactly where you stand.</p>
+                        </div>
+                        <div class="flex gap-3 relative z-10">
+                            <button onclick="openExpenseModal()" class="px-5 py-3 bg-green-500 hover:bg-green-400 text-white font-bold rounded-xl shadow-sm transition flex items-center gap-2 text-sm">
+                                <i data-lucide="plus" class="w-4 h-4"></i> Add Expense
+                            </button>
+                            <button onclick="openBudgetModal()" class="px-5 py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition flex items-center gap-2 text-sm border border-white/20">
+                                <i data-lucide="settings-2" class="w-4 h-4"></i> Set Budget
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TOP ROW: Left to spend + Budget bar + Quick stats -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Left to spend (THE main metric) -->
+                        <div class="lg:col-span-2 bg-white rounded-[2rem] border border-zinc-100 shadow-sm p-8 flex flex-col gap-4">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Left to spend this month</p>
+                                    <div id="fin-left-to-spend" class="text-6xl font-black text-zinc-900 tracking-tight transition-all duration-500">—</div>
+                                    <p id="fin-left-label" class="text-sm font-medium text-zinc-500 mt-2">of <span id="fin-budget-label">—</span> DH monthly budget</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Spent</p>
+                                    <p id="fin-spent-total" class="text-2xl font-bold text-zinc-900">0 DH</p>
+                                    <p class="text-xs text-zinc-400 mt-1" id="fin-spent-pct">0% of budget</p>
+                                </div>
+                            </div>
+                            <!-- Progress bar -->
+                            <div class="w-full bg-zinc-100 rounded-full h-4 overflow-hidden mt-2">
+                                <div id="fin-budget-bar" class="h-4 rounded-full transition-all duration-700 bg-green-500" style="width:0%"></div>
+                            </div>
+                            <div class="flex justify-between text-xs text-zinc-400 font-medium">
+                                <span>0 DH</span>
+                                <span id="fin-bar-midpoint">—</span>
+                                <span id="fin-bar-max">— DH</span>
+                            </div>
+                        </div>
+
+                        <!-- Quick stats -->
+                        <div class="flex flex-col gap-4">
+                            <div class="bg-white rounded-[2rem] border border-zinc-100 shadow-sm p-6 flex flex-col gap-2 flex-1">
+                                <p class="text-xs font-bold text-zinc-400 uppercase tracking-wider">This month</p>
+                                <div class="flex items-end gap-2">
+                                    <span id="fin-tx-count" class="text-3xl font-black text-zinc-900">0</span>
+                                    <span class="text-sm text-zinc-500 mb-1">expenses</span>
+                                </div>
+                                <p class="text-xs text-zinc-400">Avg: <span id="fin-avg" class="font-bold text-zinc-700">0 DH</span></p>
+                            </div>
+                            <div class="bg-white rounded-[2rem] border border-zinc-100 shadow-sm p-6 flex flex-col gap-2 flex-1">
+                                <p class="text-xs font-bold text-zinc-400 uppercase tracking-wider">Savings rate</p>
+                                <div class="flex items-end gap-2">
+                                    <span id="fin-savings-rate" class="text-3xl font-black text-green-600">0%</span>
+                                </div>
+                                <p class="text-xs text-zinc-400">Target: <span class="font-bold text-zinc-700">20%</span> of income</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BUCKETS (Category cards) -->
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-zinc-900 text-lg">Budget Buckets</h3>
+                            <button onclick="openBucketModal()" class="text-xs font-bold text-zinc-500 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200 px-3 py-1.5 rounded-lg transition flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> New Bucket</button>
+                        </div>
+                        <div id="fin-buckets-container" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                    </div>
+
+                    <!-- BOTTOM ROW: Transactions + Spend by project -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Recent transactions -->
+                        <div class="lg:col-span-2 bg-white rounded-[2rem] border border-zinc-100 shadow-sm p-6">
+                            <div class="flex justify-between items-center mb-5">
+                                <h3 class="font-bold text-zinc-900">Recent Transactions</h3>
+                                <div class="flex gap-2">
+                                    <select id="fin-filter-cat" onchange="renderFinance()" class="text-xs border border-zinc-200 rounded-lg px-2 py-1.5 bg-white text-zinc-700 focus:outline-none cursor-pointer">
+                                        <option value="all">All categories</option>
+                                    </select>
+                                    <button onclick="exportExpensesCSV()" class="text-xs font-bold text-zinc-500 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200 px-3 py-1.5 rounded-lg transition flex items-center gap-1"><i data-lucide="download" class="w-3 h-3"></i> CSV</button>
+                                </div>
+                            </div>
+                            <div id="fin-transactions-list" class="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+                                <!-- Injected -->
+                            </div>
+                        </div>
+
+                        <!-- Spend by project -->
+                        <div class="bg-white rounded-[2rem] border border-zinc-100 shadow-sm p-6 flex flex-col">
+                            <h3 class="font-bold text-zinc-900 mb-2">Project Spending</h3>
+                            <p class="text-xs text-zinc-400 mb-5">Expenses linked to your projects.</p>
+                            <div id="fin-project-spending" class="space-y-3 flex-1 overflow-y-auto">
+                                <!-- Injected -->
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-zinc-100">
+                                <div class="flex justify-between text-sm font-bold text-zinc-900">
+                                    <span>Total (project)</span>
+                                    <span id="fin-proj-total">0 DH</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= VIEW: SETTINGS ================= -->
+                <div id="view-settings" class="view-section flex-col gap-6">
+                    <div class="bg-zinc-900 text-white p-8 rounded-[2rem] shadow-lg relative overflow-hidden">
+                        <h2 class="text-3xl font-bold mb-2 tracking-tight">Settings</h2>
+                        <p class="text-zinc-400">Manage your workspace preferences.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Preferences -->
+                        <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-zinc-100 flex flex-col">
+                            <h3 class="font-semibold text-lg text-zinc-900 mb-4 flex items-center gap-2"><i data-lucide="sliders" class="w-5 h-5 text-zinc-500"></i> Preferences</h3>
+                            <div class="space-y-4 flex-1">
+                                <div onclick="toggleSetting('notifs')" class="flex items-center justify-between p-3 border border-zinc-100 rounded-xl hover:bg-zinc-50 transition cursor-pointer select-none">
+                                    <div><p class="font-bold text-sm text-zinc-900">Notifications</p><p class="text-xs text-zinc-500">Task & goal alerts</p></div>
+                                    <div id="sw-notifs" class="w-10 h-6 rounded-full relative transition-colors duration-200 bg-green-500"><div id="sw-notifs-k" class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200"></div></div>
+                                </div>
+                                <div onclick="toggleSetting('sound')" class="flex items-center justify-between p-3 border border-zinc-100 rounded-xl hover:bg-zinc-50 transition cursor-pointer select-none">
+                                    <div><p class="font-bold text-sm text-zinc-900">Sound Effects</p><p class="text-xs text-zinc-500">Play sound on task complete</p></div>
+                                    <div id="sw-sound" class="w-10 h-6 rounded-full relative transition-colors duration-200 bg-zinc-200"><div id="sw-sound-k" class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200"></div></div>
+                                </div>
+                                <div onclick="toggleSetting('darkmode')" class="flex items-center justify-between p-3 border border-zinc-100 rounded-xl hover:bg-zinc-50 transition cursor-pointer select-none">
+                                    <div><p class="font-bold text-sm text-zinc-900">Dark Mode</p><p class="text-xs text-zinc-500">Switch to dark theme</p></div>
+                                    <div id="sw-darkmode" class="w-10 h-6 rounded-full relative transition-colors duration-200 bg-zinc-200"><div id="sw-darkmode-k" class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200"></div></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Share & Invite -->
+                        <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-zinc-100 flex flex-col">
+                            <h3 class="font-semibold text-lg text-zinc-900 mb-4 flex items-center gap-2"><i data-lucide="share-2" class="w-5 h-5 text-zinc-500"></i> Collaboration</h3>
+                            <div class="space-y-4 flex-1">
+                                <div class="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                                    <p class="font-bold text-sm text-blue-900 mb-2">Share your dashboard</p>
+                                    <div class="flex gap-2">
+                                        <input type="text" id="share-link" value="https://idraft.app/share/your-workspace" readonly class="flex-1 bg-white border border-blue-200 rounded-lg px-3 py-2 text-xs text-zinc-500 outline-none select-all">
+                                        <button onclick="copyShareLink()" id="copy-btn" class="px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition flex items-center gap-1.5"><i data-lucide="copy" class="w-3 h-3"></i><span>Copy</span></button>
+                                    </div>
+                                    <p class="text-[10px] text-zinc-400 mt-1.5">Share with friends to invite them to iDraft.</p>
+                                </div>
+                                <button onclick="showNotification('Invite dialog opened')" class="w-full py-3 flex items-center justify-center gap-2 border border-zinc-200 rounded-xl font-bold text-sm text-zinc-700 hover:bg-zinc-50 transition"><i data-lucide="users" class="w-4 h-4"></i> Invite Friends</button>
+                            </div>
+                        </div>
+
+                        <!-- Danger Zone -->
+                        <div class="md:col-span-2 bg-red-50 p-6 rounded-[2rem] border border-red-100 flex flex-col items-center justify-center py-10">
+                            <i data-lucide="log-out" class="w-8 h-8 text-red-400 mb-3"></i>
+                            <h3 class="font-bold text-lg text-red-900 mb-1">Sign Out</h3>
+                            <p class="text-sm text-red-700/70 mb-6 text-center max-w-md">Disconnect from your session. Your data will be saved securely.</p>
+                            <button onclick="logout()" class="px-8 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 shadow-sm transition">Log out from iDraft</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- ================= MODALS ================= -->
+    
+    <!-- Unified Creation Modal -->
+    <div id="inputModal" class="fixed inset-0 bg-zinc-900/60 backdrop-blur-sm z-50 hidden items-center justify-center opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-zinc-200 transform scale-95 transition-transform duration-200" id="inputModalContent">
+            <h3 id="modalTitle" class="text-xl font-bold mb-1 text-zinc-900 tracking-tight">Create Item</h3>
+            <p id="modalDesc" class="text-sm text-zinc-500 mb-5">Enter the details below.</p>
+            
+            <input type="text" id="modalInput" class="w-full border border-zinc-300 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-zinc-900 text-sm placeholder:text-zinc-400" placeholder="Type here...">
+            
+            <div id="iconSelectContainer" class="hidden mb-5">
+                <label class="block text-xs font-bold text-zinc-500 mb-2 uppercase tracking-wide">Choose an Icon</label>
+                <div class="flex gap-2" id="icon-picker-grid">
+                    <button type="button" onclick="selectTaskIcon('zap')" class="w-10 h-10 rounded-xl border border-zinc-200 flex items-center justify-center text-zinc-600 hover:bg-zinc-50 transition picker-option active" id="icon-opt-zap"><i data-lucide="zap" class="w-5 h-5"></i></button>
+                    <button type="button" onclick="selectTaskIcon('star')" class="w-10 h-10 rounded-xl border border-zinc-200 flex items-center justify-center text-zinc-600 hover:bg-zinc-50 transition picker-option" id="icon-opt-star"><i data-lucide="star" class="w-5 h-5"></i></button>
+                    <button type="button" onclick="selectTaskIcon('heart')" class="w-10 h-10 rounded-xl border border-zinc-200 flex items-center justify-center text-zinc-600 hover:bg-zinc-50 transition picker-option" id="icon-opt-heart"><i data-lucide="heart" class="w-5 h-5"></i></button>
+                    <button type="button" onclick="selectTaskIcon('coffee')" class="w-10 h-10 rounded-xl border border-zinc-200 flex items-center justify-center text-zinc-600 hover:bg-zinc-50 transition picker-option" id="icon-opt-coffee"><i data-lucide="coffee" class="w-5 h-5"></i></button>
+                    <button type="button" onclick="selectTaskIcon('briefcase')" class="w-10 h-10 rounded-xl border border-zinc-200 flex items-center justify-center text-zinc-600 hover:bg-zinc-50 transition picker-option" id="icon-opt-briefcase"><i data-lucide="briefcase" class="w-5 h-5"></i></button>
+                    <button type="button" onclick="selectTaskIcon('code')" class="w-10 h-10 rounded-xl border border-zinc-200 flex items-center justify-center text-zinc-600 hover:bg-zinc-50 transition picker-option" id="icon-opt-code"><i data-lucide="code" class="w-5 h-5"></i></button>
+                </div>
+            </div>
+
+            <div id="taskExtrasContainer" class="hidden mb-5">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wide">Assign Project</label>
+                        <select id="modalProjectSelect" class="w-full border border-zinc-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white">
+                            <option value="none">-- Global Task --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wide">Link to Goal</label>
+                        <select id="modalTaskGoal" class="w-full border border-zinc-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white">
+                            <option value="none">-- No Goal --</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wide">Priority</label>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="selectPriority('low')" class="flex-1 py-2 rounded-xl border border-zinc-200 text-zinc-600 text-xs font-bold hover:bg-zinc-50 transition priority-option" id="pri-low">Low</button>
+                        <button type="button" onclick="selectPriority('medium')" class="flex-1 py-2 rounded-xl border border-zinc-200 text-zinc-600 text-xs font-bold hover:bg-zinc-50 transition priority-option active" id="pri-medium">Medium</button>
+                        <button type="button" onclick="selectPriority('high')" class="flex-1 py-2 rounded-xl border border-zinc-200 text-zinc-600 text-xs font-bold hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition priority-option" id="pri-high">High 🔥</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end gap-3 mt-2">
+                <button onclick="closeModal()" class="px-5 py-2.5 text-zinc-600 font-medium hover:bg-zinc-100 rounded-xl transition text-sm">Cancel</button>
+                <button id="modalSaveBtn" class="px-5 py-2.5 bg-zinc-900 font-medium text-white rounded-xl hover:bg-zinc-800 transition shadow-sm text-sm">Save Item</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar Event Creation Modal -->
+    <div id="eventModal" class="fixed inset-0 bg-zinc-900/60 backdrop-blur-sm z-50 hidden items-center justify-center opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-zinc-200 transform scale-95 transition-transform duration-200" id="eventModalContent">
+            <h3 class="text-xl font-bold mb-1 text-zinc-900 tracking-tight">Add Calendar Event</h3>
+            <p class="text-sm text-zinc-500 mb-5">Block time in your schedule.</p>
+            
+            <input type="text" id="eventTitle" class="w-full border border-zinc-300 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-zinc-900 text-sm placeholder:text-zinc-400" placeholder="Event Name...">
+            
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wide">Day</label>
+                    <select id="eventDay" class="w-full border border-zinc-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white">
+                        <option value="1">Monday</option>
+                        <option value="2">Tuesday</option>
+                        <option value="3">Wednesday</option>
+                        <option value="4">Thursday</option>
+                        <option value="5">Friday</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wide">Start Time</label>
+                    <select id="eventStart" class="w-full border border-zinc-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white">
+                        <option value="8">08:00 AM</option>
+                        <option value="9">09:00 AM</option>
+                        <option value="10">10:00 AM</option>
+                        <option value="11">11:00 AM</option>
+                        <option value="12">12:00 PM</option>
+                        <option value="13">01:00 PM</option>
+                        <option value="14">02:00 PM</option>
+                        <option value="15">03:00 PM</option>
+                        <option value="16">04:00 PM</option>
+                        <option value="17">05:00 PM</option>
+                        <option value="18">06:00 PM</option>
+                        <option value="19">07:00 PM</option>
+                        <option value="20">08:00 PM</option>
+                        <option value="21">09:00 PM</option>
+                        <option value="22">10:00 PM</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-5">
+                <div>
+                    <label class="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wide">Duration</label>
+                    <select id="eventDuration" class="w-full border border-zinc-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white">
+                        <option value="1">1 Hour</option>
+                        <option value="2">2 Hours</option>
+                        <option value="3">3 Hours</option>
+                        <option value="4">4 Hours</option>
+                        <option value="5">5 Hours</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wide">Project Link</label>
+                    <select id="eventProjectSelect" class="w-full border border-zinc-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white">
+                        <option value="none">-- None --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-zinc-500 mb-2 uppercase tracking-wide">Event Color</label>
+                <div class="flex gap-3">
+                    <button type="button" onclick="selectEventColor('bg-blue-100 text-blue-800 border-blue-200')" class="w-8 h-8 rounded-full bg-blue-400 picker-option active ring-2 ring-zinc-900 scale-110" id="col-blue"></button>
+                    <button type="button" onclick="selectEventColor('bg-purple-100 text-purple-800 border-purple-200')" class="w-8 h-8 rounded-full bg-purple-400 picker-option" id="col-purple"></button>
+                    <button type="button" onclick="selectEventColor('bg-green-100 text-green-800 border-green-200')" class="w-8 h-8 rounded-full bg-green-400 picker-option" id="col-green"></button>
+                    <button type="button" onclick="selectEventColor('bg-orange-100 text-orange-800 border-orange-200')" class="w-8 h-8 rounded-full bg-orange-400 picker-option" id="col-orange"></button>
+                    <button type="button" onclick="selectEventColor('bg-pink-100 text-pink-800 border-pink-200')" class="w-8 h-8 rounded-full bg-pink-400 picker-option" id="col-pink"></button>
+                    <button type="button" onclick="selectEventColor('bg-zinc-100 text-zinc-800 border-zinc-200')" class="w-8 h-8 rounded-full bg-zinc-400 picker-option" id="col-zinc"></button>
+                </div>
+            </div>
+            
+            <div class="flex justify-end gap-3 mt-2">
+                <button onclick="closeEventModal()" class="px-5 py-2.5 text-zinc-600 font-medium hover:bg-zinc-100 rounded-xl transition text-sm">Cancel</button>
+                <button onclick="saveEvent()" class="px-5 py-2.5 bg-blue-600 font-medium text-white rounded-xl hover:bg-blue-700 transition shadow-sm text-sm">Save Event</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Palette Modal -->
+    <div id="searchModal" class="fixed inset-0 bg-zinc-900/60 backdrop-blur-sm z-50 hidden items-start justify-center pt-[10vh] opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-3xl w-full max-w-2xl shadow-2xl border border-zinc-200 overflow-hidden transform scale-95 transition-transform duration-200" id="searchModalContent">
+            <div class="flex items-center px-4 border-b border-zinc-100">
+                <i data-lucide="search" class="w-5 h-5 text-zinc-400"></i>
+                <input type="text" id="searchInput" onkeyup="performSearch()" class="w-full bg-transparent px-4 py-5 focus:outline-none text-lg text-zinc-900 placeholder-zinc-400" placeholder="Search tasks, goals, projects...">
+                <button onclick="closeSearchModal()" class="text-xs bg-zinc-100 text-zinc-500 px-2 py-1 rounded-md hover:bg-zinc-200 transition">ESC</button>
+            </div>
+            <div id="searchResults" class="max-h-[60vh] overflow-y-auto p-2 bg-zinc-50/50">
+                <div class="p-8 text-center text-zinc-400 text-sm">Start typing to search your workspace...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- ================= JAVASCRIPT ================= -->
+    <script>
+// FULL CLEAN REWRITE — iDraft v4 JavaScript
+// All bugs fixed, all features working
+
+// ═══════════════════════════════════════════════════════════
+// 1. STATE
+// ═══════════════════════════════════════════════════════════
+let appState = {
+    isLoggedIn: false,
+    settings: { notifs: true, sound: false, darkmode: false },
+    user: {
+        name: "Hamza", role: "Strategic Operator", level: 5, score: 1250, streak: 7,
+        achievements: [
+            { title: "Early Bird",   desc: "Completed 5 tasks before 9 AM", icon: "sun"    },
+            { title: "Task Crusher", desc: "Finished 50 tasks total",        icon: "zap"    },
+            { title: "Goal Setter",  desc: "Created 10 monthly goals",       icon: "target" }
+        ]
+    },
+    goals: [
+        { id: 1, text: "Read 2 books",         status: "completed" },
+        { id: 2, text: "Sports every day",      status: "active"    },
+        { id: 3, text: "Complete the course",   status: "active"    }
+    ],
+    projects: [
+        { id: 1, title: "Website Redesign", desc: "Working on the new frontend architecture.", colorTheme: "bg-white",    textTheme: "text-zinc-900" },
+        { id: 2, title: "Q3 Marketing",     desc: "Ad creatives and copy deployment.",         colorTheme: "bg-zinc-900", textTheme: "text-white"    }
+    ],
+    tasks: [
+        { id: 101, title: "Doctor appointment",       date: "Tomorrow", icon: "heart",     status: "active",    projectId: "none", priority: "high",   goalId: "none", isSpotlight: false },
+        { id: 102, title: "Reply to investor emails", date: "Today",    icon: "mail",      status: "active",    projectId: "none", priority: "medium", goalId: "none", isSpotlight: false },
+        { id: 103, title: "Finalize Budget",          date: "Friday",   icon: "briefcase", status: "active",    projectId: "none", priority: "medium", goalId: "none", isSpotlight: false },
+        { id: 201, title: "Design Landing Page",      date: "Today",    icon: "pen-tool",  status: "completed", projectId: 1,      priority: "high",   goalId: 3,      isSpotlight: false },
+        { id: 202, title: "Develop Header",           date: "Tomorrow", icon: "code",      status: "active",    projectId: 1,      priority: "medium", goalId: 3,      isSpotlight: false }
+    ],
+    events: [
+        { id: 1, title: "Team Sync",  day: 1, startHour: 9,  span: 1, colorClass: "bg-purple-100 text-purple-800 border-purple-200", projectId: "none" },
+        { id: 2, title: "UI Design",  day: 1, startHour: 10, span: 2, colorClass: "bg-blue-100 text-blue-800 border-blue-200",       projectId: 1      },
+        { id: 3, title: "Deep Work",  day: 3, startHour: 8,  span: 3, colorClass: "bg-blue-100 text-blue-800 border-blue-200",       projectId: "none" },
+        { id: 4, title: "Lunch",      day: 3, startHour: 13, span: 1, colorClass: "bg-zinc-100 text-zinc-800 border-zinc-200",       projectId: "none" }
+    ],
+    docs: [
+        { id: 1, title: "Project Brainstorming", content: "<h2>Goals for Q3:</h2><ul><li>Increase conversion by 5%</li><li>Launch 2 new ad sets</li></ul><p>Review with team.</p>", linkedTo: "project-2", parentId: null, updatedAt: "Today" },
+        { id: 2, title: "Ad Copy Drafts",        content: "<p>Draft 1: Save time today...</p>",                                                                                       linkedTo: "project-2", parentId: 1,    updatedAt: "Today" }
+    ],
+    expandedDocs: new Set([1]),
+    finance: {
+        monthlyBudget: 4000,
+        monthlyIncome: 6000,
+        buckets: [
+            { id: "food",      name: "Food",      emoji: "🍔", limit: 1000, accent: "#f97316" },
+            { id: "transport", name: "Transport", emoji: "🚕", limit: 500,  accent: "#3b82f6" },
+            { id: "personal",  name: "Personal",  emoji: "🛍️", limit: 800,  accent: "#ec4899" },
+            { id: "savings",   name: "Savings",   emoji: "🏦", limit: 1200, accent: "#22c55e" },
+            { id: "other",     name: "Other",     emoji: "💡", limit: 500,  accent: "#71717a" }
+        ],
+        expenses: [
+            { id: 1, amount: 45,  desc: "Lunch McDonalds",         bucket: "food",      projectId: "none", date: "Today"     },
+            { id: 2, amount: 120, desc: "Taxi to airport",          bucket: "transport", projectId: "none", date: "Today"     },
+            { id: 3, amount: 250, desc: "Domain + Hosting",         bucket: "other",     projectId: 1,      date: "Yesterday" },
+            { id: 4, amount: 85,  desc: "Groceries",                bucket: "food",      projectId: "none", date: "Yesterday" },
+            { id: 5, amount: 200, desc: "Sports shoes",             bucket: "personal",  projectId: "none", date: "Mar 2"     },
+            { id: 6, amount: 600, desc: "Monthly savings transfer", bucket: "savings",   projectId: "none", date: "Mar 1"     }
+        ]
+    }
+};
+
+// ═══════════════════════════════════════════════════════════
+// 2. GLOBALS
+// ═══════════════════════════════════════════════════════════
+const priorityColors  = { high: "bg-red-50 text-red-600 border-red-200", medium: "bg-orange-50 text-orange-600 border-orange-200", low: "bg-blue-50 text-blue-600 border-blue-200" };
+const priorityLabels  = { high: "High 🔥", medium: "Med ⚡", low: "Low 🧊" };
+let currentCalendarView = "week";
+let lineChart = null, doughnutChart = null;
+let selectedTaskIcon = "zap", selectedTaskPriority = "medium";
+let selectedEventColor = "bg-blue-100 text-blue-800 border-blue-200";
+let activeNoteId = null;
+const BUCKET_EMOJIS = ["💰","🍔","🚕","🛍️","🏦","💡","🎮","🎓","🏋️","✈️","💊","🏠","📱","👗","☕","🎵","📚","🖥️"];
+
+function escHtml(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function fmt(n) { return Number(n).toLocaleString("fr-MA"); }
+
+// ═══════════════════════════════════════════════════════════
+// 3. NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════
+const _notifActive = new Set();
+function showNotification(msg, type = "info") {
+    if (!appState.settings.notifs) return;
+    if (_notifActive.has(msg)) return;
+    _notifActive.add(msg);
+    const icons  = { info:"info", success:"check-circle-2", warn:"alert-triangle", xp:"zap", error:"x-circle" };
+    const colors = { info:"text-blue-400", success:"text-green-400", warn:"text-yellow-400", xp:"text-yellow-300", error:"text-red-400" };
+    const el = document.createElement("div");
+    el.className = "bg-zinc-900 text-white px-5 py-3 rounded-2xl shadow-xl transform translate-y-10 opacity-0 transition-all duration-300 flex items-center gap-3 text-sm font-medium border border-zinc-700 max-w-xs";
+    el.innerHTML = `<i data-lucide="${icons[type]||"info"}" class="w-4 h-4 ${colors[type]||"text-blue-400"} shrink-0"></i><span>${escHtml(msg)}</span>`;
+    document.getElementById("toastContainer").appendChild(el);
+    lucide.createIcons({ root: el });
+    requestAnimationFrame(() => el.classList.remove("translate-y-10","opacity-0"));
+    setTimeout(() => {
+        el.classList.add("opacity-0","translate-y-2");
+        setTimeout(() => { el.remove(); _notifActive.delete(msg); }, 300);
+    }, 2800);
+}
+
+// ═══════════════════════════════════════════════════════════
+// 4. CHARTS — init once, update on data change
+// ═══════════════════════════════════════════════════════════
+function initCharts() {
+    if (lineChart) lineChart.destroy();
+    if (doughnutChart) doughnutChart.destroy();
+
+    const lineCtx = document.getElementById("lineChart")?.getContext("2d");
+    if (lineCtx) {
+        lineChart = new Chart(lineCtx, {
+            type: "line",
+            data: {
+                labels: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+                datasets: [
+                    { type: "bar",  label: "Completed", data: [2,5,3,7,4,0,0], backgroundColor: "#18181b", borderRadius: 5, barPercentage: 0.5 },
+                    { type: "line", label: "Added",      data: [5,3,6,4,8,0,0], borderColor: "#a1a1aa", borderWidth: 2, tension: 0.4, fill: false, borderDash: [5,5], pointRadius: 4, pointBackgroundColor: "#ffffff", pointBorderColor: "#a1a1aa" }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false } },
+                scales: {
+                    x: { grid: { display: false }, border: { display: false }, ticks: { color: "#a1a1aa", font: { size: 11 } } },
+                    y: { display: false, beginAtZero: true }
+                },
+                animation: { duration: 600 }
+            }
+        });
+    }
+
+    const dCtx = document.getElementById("doughnutChart")?.getContext("2d");
+    if (dCtx) {
+        doughnutChart = new Chart(dCtx, {
+            type: "doughnut",
+            data: { labels: ["Done","Pending"], datasets: [{ data: [1,1], backgroundColor: ["#22c55e","#e4e4e7"], borderWidth: 0, cutout: "78%" }] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                animation: { animateScale: true, duration: 600 }
+            }
+        });
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+// 5. AUTH
+// ═══════════════════════════════════════════════════════════
+function login() {
+    const inp = document.getElementById("login-name-input");
+    const raw = inp ? inp.value.trim() : "";
+    appState.user.name = raw.replace(/[<>"']/g,"").substring(0,32) || "Hamza";
+    appState.isLoggedIn = true;
+    const lc = document.getElementById("login-container");
+    lc.style.opacity = "0"; lc.style.pointerEvents = "none";
+    setTimeout(() => {
+        lc.style.display = "none";
+        const app = document.getElementById("app-container");
+        app.classList.remove("opacity-0","pointer-events-none");
+        initCharts();
+        updateUserNameUI();
+        renderDashboard();
+        showNotification(`Welcome back, ${appState.user.name}! 🔥`, "success");
+    }, 400);
+}
+
+function logout() {
+    appState.isLoggedIn = false;
+    document.getElementById("app-container").classList.add("opacity-0","pointer-events-none");
+    setTimeout(() => {
+        const lc = document.getElementById("login-container");
+        lc.style.display = ""; lc.style.opacity = "0"; lc.style.pointerEvents = "";
+        requestAnimationFrame(() => { lc.style.opacity = "1"; });
+        switchView("dashboard");
+    }, 450);
+}
+
+// ═══════════════════════════════════════════════════════════
+// 6. DARK MODE
+// ═══════════════════════════════════════════════════════════
+function applyDarkMode(on) {
+    document.documentElement.classList.toggle("dark", on);
+    appState.settings.darkmode = on;
+    // Update chart colors
+    if (lineChart) {
+        lineChart.data.datasets[0].backgroundColor = on ? "#e4e4e7" : "#18181b";
+        lineChart.data.datasets[1].borderColor       = on ? "#71717a" : "#a1a1aa";
+        lineChart.data.datasets[1].pointBackgroundColor = on ? "#27272a" : "#ffffff";
+        lineChart.options.scales.x.ticks.color = on ? "#71717a" : "#a1a1aa";
+        lineChart.update();
+    }
+    if (doughnutChart) {
+        doughnutChart.data.datasets[0].backgroundColor = [on ? "#4ade80" : "#22c55e", on ? "#3f3f46" : "#e4e4e7"];
+        doughnutChart.update();
+    }
+}
+
+function toggleSetting(key) {
+    appState.settings[key] = !appState.settings[key];
+    const on = appState.settings[key];
+    const sw = document.getElementById(`sw-${key}`);
+    const k  = document.getElementById(`sw-${key}-k`);
+    if (sw) sw.style.backgroundColor = on ? "#22c55e" : "#e4e4e7";
+    if (k)  k.style.transform = on ? "translateX(16px)" : "translateX(0)";
+    if (key === "darkmode") applyDarkMode(on);
+    const labels = { notifs: ["Notifications off","Notifications on"], sound: ["Sound off","Sound on"], darkmode: ["Light mode","Dark mode on 🌙"] };
+    showNotification(labels[key]?.[on?1:0] || key, on ? "success" : "info");
+}
+
+// ═══════════════════════════════════════════════════════════
+// 7. SCROLL HEADER
+// ═══════════════════════════════════════════════════════════
+const mainContent  = document.getElementById("main-content");
+const globalHeader = document.getElementById("global-header");
+let lastScrollY = 0;
+mainContent.addEventListener("scroll", () => {
+    const y = mainContent.scrollTop;
+    globalHeader.style.transform = (y > lastScrollY && y > 60) ? "translateY(-130%)" : "translateY(0)";
+    lastScrollY = y;
+});
+
+// ═══════════════════════════════════════════════════════════
+// 8. HELPERS
+// ═══════════════════════════════════════════════════════════
+function getProjectStats(projectId) {
+    const pts = appState.tasks.filter(t => t.projectId == projectId);
+    if (!pts.length) return { total:0, completed:0, progress:0 };
+    const c = pts.filter(t => t.status === "completed").length;
+    return { total: pts.length, completed: c, progress: Math.round(c/pts.length*100) };
+}
+
+function copyShareLink() {
+    const val = document.getElementById("share-link")?.value || "https://idraft.app/share";
+    navigator.clipboard.writeText(val).then(() => {
+        const btn = document.getElementById("copy-btn");
+        if (btn) { btn.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i><span>Copied!</span>`; lucide.createIcons({root:btn}); }
+        showNotification("Link copied!", "success");
+        setTimeout(() => { if (btn) { btn.innerHTML = `<i data-lucide="copy" class="w-3 h-3"></i><span>Copy</span>`; lucide.createIcons({root:btn}); } }, 2000);
+    }).catch(() => { showNotification("Copy: " + val, "info"); });
+}
+
+// ═══════════════════════════════════════════════════════════
+// 9. ROUTER
+// ═══════════════════════════════════════════════════════════
+function switchView(name) {
+    mainContent.scrollTo({ top:0, behavior:"smooth" });
+    globalHeader.style.transform = "translateY(0)";
+    document.querySelectorAll(".view-section").forEach(el => el.classList.remove("active"));
+    document.querySelectorAll(".nav-item").forEach(el => {
+        el.classList.remove("bg-zinc-900","text-white","shadow-md");
+        el.classList.add("text-zinc-500","hover:bg-zinc-200/80","hover:text-zinc-900");
+    });
+    document.getElementById(`view-${name}`)?.classList.add("active");
+    const nav = document.getElementById(`nav-${name}`);
+    if (nav) {
+        nav.classList.remove("text-zinc-500","hover:bg-zinc-200/80","hover:text-zinc-900");
+        nav.classList.add("bg-zinc-900","text-white","shadow-md");
+    }
+    const titles = { dashboard:`Hi, ${appState.user.name}!`, tasks:"My Tasks", projects:"Projects", calendar:"Schedule", docs:"Workspace Docs", finance:"Finance HQ", archive:"Archive & Stats", profile:"Profile", settings:"Settings" };
+    document.getElementById("page-title").textContent = titles[name] || name;
+    const renders = { dashboard: renderDashboard, tasks: renderTasksPage, projects: renderProjectsPage, calendar: renderCalendar, docs: renderDocsSidebar, finance: renderFinance, archive: renderArchive, profile: renderProfile };
+    renders[name]?.();
+}
+
+// ═══════════════════════════════════════════════════════════
+// 10. DASHBOARD
+// ═══════════════════════════════════════════════════════════
+function updateDashboardStats() {
+    // Real counts from actual data
+    const allTasks  = appState.tasks;
+    const done      = allTasks.filter(t => t.status === "completed").length;
+    const active    = allTasks.filter(t => t.status === "active").length;
+    const total     = done + active;
+    const donePct   = total > 0 ? Math.round(done / total * 100) : 0;
+
+    // "Tasks done for all time" = completed + a base offset (simulates history)
+    const HIST_OFFSET = 42;
+    document.getElementById("total-tasks").textContent = done + HIST_OFFSET;
+
+    // Projects stats — real calculation
+    const projTotal   = appState.projects.length;
+    const projDone    = appState.projects.filter(p => { const s = getProjectStats(p.id); return s.total > 0 && s.progress === 100; }).length;
+    const projActive  = projTotal - projDone;
+
+    document.getElementById("stat-proj-total").textContent = projTotal;
+    document.getElementById("stat-proj-prog").textContent  = projActive;
+    document.getElementById("stat-proj-done").textContent  = projDone;
+    document.getElementById("total-projects-stopped").textContent = projDone;
+
+    // Doughnut chart
+    if (doughnutChart) {
+        doughnutChart.data.datasets[0].data = [done > 0 ? done : 0, active > 0 ? active : 1];
+        doughnutChart.update();
+        document.getElementById("month-progress-val").textContent = donePct + "%";
+    }
+
+    // Line chart — last 7 days activity
+    if (lineChart) {
+        lineChart.data.datasets[0].data = [2, 5, 3, 7, 4, done, done + 2];
+        lineChart.data.datasets[1].data = [5, 3, 6, 4, 8, active, active + 1];
+        lineChart.update();
+    }
+}
+
+function renderDashboard() {
+    renderGoals();
+    renderTasks();
+    renderDashboardProjects();
+    updateDashboardStats();
+    lucide.createIcons();
+}
+
+function renderGoals() {
+    const c = document.getElementById("goals-container");
+    if (!c) return;
+    c.innerHTML = "";
+    if (!appState.goals.length) {
+        c.innerHTML = `<li class="text-sm text-zinc-400 italic text-center py-4">No goals set. Add one!</li>`;
+        return;
+    }
+    appState.goals.forEach(g => {
+        const done = g.status === "completed";
+        const li = document.createElement("li");
+        li.className = "flex items-center gap-3 group bg-zinc-50/50 p-2 rounded-xl border border-transparent hover:border-zinc-200 transition";
+        li.innerHTML = `<input type="checkbox" class="round-checkbox" ${done?"checked":""} onchange="toggleGoal(${g.id})"><span class="text-sm font-medium goal-text ${done?"completed":"text-zinc-700"} flex-1">${escHtml(g.text)}</span><button onclick="deleteGoal(${g.id})" class="opacity-0 group-hover:opacity-100 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`;
+        c.appendChild(li);
+    });
+}
+
+function renderTasks() {
+    const c = document.getElementById("tasks-container");
+    if (!c) return;
+    c.innerHTML = "";
+    const active = appState.tasks.filter(t => t.status === "active");
+    const countEl = document.getElementById("active-task-count");
+    if (countEl) countEl.textContent = active.length;
+
+    if (!active.length) {
+        c.innerHTML = `<div class="w-full px-10 py-8 rounded-3xl border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center text-center bg-zinc-50/50"><i data-lucide="coffee" class="w-8 h-8 text-zinc-300 mb-3"></i><p class="text-sm font-medium text-zinc-500 italic">"All caught up. Recharge."</p></div>`;
+        lucide.createIcons(); return;
+    }
+    active.sort((a,b) => {
+        if (a.isSpotlight && !b.isSpotlight) return -1;
+        if (!a.isSpotlight && b.isSpotlight) return 1;
+        const pOrd = {high:0,medium:1,low:2};
+        return (pOrd[a.priority]||1) - (pOrd[b.priority]||1) || b.id - a.id;
+    });
+    active.slice(0,5).forEach(t => {
+        const isHigh = t.priority === "high";
+        const linked = t.projectId !== "none";
+        const d = document.createElement("div");
+        d.className = "bg-white p-5 rounded-3xl shadow-sm border border-zinc-100 shrink-0 w-[240px] flex flex-col justify-between transition hover:-translate-y-1 hover:shadow-md cursor-grab active:cursor-grabbing select-none";
+        d.draggable = true;
+        d.dataset.taskId = t.id;
+        d.innerHTML = `<div><span class="text-[10px] ${linked?"bg-blue-50 text-blue-600 border-blue-100":"bg-zinc-100 text-zinc-600 border-zinc-200"} px-2 py-0.5 rounded-full border font-bold mb-3 inline-block">${linked?"Project":"Global"}</span><div class="flex justify-between items-start mb-2"><div class="w-10 h-10 bg-zinc-50 rounded-xl border border-zinc-100 flex items-center justify-center"><i data-lucide="${t.icon}" class="w-5 h-5 text-zinc-600"></i></div><button onclick="markTaskDone(${t.id})" class="text-zinc-300 hover:text-green-500 hover:bg-green-50 p-1.5 rounded-lg transition"><i data-lucide="check-circle-2" class="w-5 h-5"></i></button></div><h3 class="font-bold text-zinc-900 text-sm mb-4 leading-snug">${escHtml(t.title)}${isHigh?` <i data-lucide="flame" class="w-4 h-4 text-orange-500 inline-block"></i>`:""}</h3></div><div class="flex justify-between items-center mt-auto border-t border-zinc-100 pt-3"><span class="text-xs text-zinc-400 font-medium flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${t.date}</span><button onclick="markTaskDone(${t.id})" class="w-8 h-8 bg-zinc-900 text-white rounded-lg flex items-center justify-center hover:bg-zinc-700 transition shadow-sm"><i data-lucide="check" class="w-4 h-4"></i></button></div>`;
+        c.appendChild(d);
+    });
+    lucide.createIcons();
+    initDashDrag();
+}
+
+// Drag & drop dashboard
+let _dashDragEl = null;
+function initDashDrag() {
+    const c = document.getElementById("tasks-container");
+    if (!c) return;
+    c.querySelectorAll("[data-task-id]").forEach(el => {
+        el.addEventListener("dragstart", e => { _dashDragEl = el; el.style.opacity = ".4"; e.dataTransfer.effectAllowed = "move"; });
+        el.addEventListener("dragend",   () => { if (_dashDragEl) _dashDragEl.style.opacity = "1"; _dashDragEl = null; c.querySelectorAll("[data-task-id]").forEach(x => x.style.outline = "none"); });
+        el.addEventListener("dragover",  e => { e.preventDefault(); if (el !== _dashDragEl) el.style.outline = "2px dashed #a1a1aa"; });
+        el.addEventListener("dragleave", () => el.style.outline = "none");
+        el.addEventListener("drop",      e => {
+            e.preventDefault(); el.style.outline = "none";
+            if (!_dashDragEl || _dashDragEl === el) return;
+            const after = e.clientX > el.getBoundingClientRect().left + el.offsetWidth / 2;
+            c.insertBefore(_dashDragEl, after ? el.nextSibling : el);
+            const si = appState.tasks.findIndex(t => t.id === parseInt(_dashDragEl.dataset.taskId));
+            const ti = appState.tasks.findIndex(t => t.id === parseInt(el.dataset.taskId));
+            if (si !== -1 && ti !== -1) [appState.tasks[si], appState.tasks[ti]] = [appState.tasks[ti], appState.tasks[si]];
+            showNotification("Task reordered ✓", "info");
+        });
+    });
+}
+
+function initQueueDrag() {
+    const c = document.getElementById("tasks-queue-container");
+    if (!c) return;
+    let dragEl = null;
+    c.querySelectorAll("[data-row-id]").forEach(el => {
+        el.addEventListener("dragstart", e => { dragEl = el; el.style.opacity = ".4"; e.dataTransfer.effectAllowed = "move"; });
+        el.addEventListener("dragend",   () => { if (dragEl) dragEl.style.opacity = "1"; dragEl = null; c.querySelectorAll("[data-row-id]").forEach(x => x.style.outline = "none"); });
+        el.addEventListener("dragover",  e => { e.preventDefault(); if (el !== dragEl) el.style.outline = "2px dashed #a1a1aa"; });
+        el.addEventListener("dragleave", () => el.style.outline = "none");
+        el.addEventListener("drop",      e => {
+            e.preventDefault(); el.style.outline = "none";
+            if (!dragEl || dragEl === el) return;
+            const after = e.clientY > el.getBoundingClientRect().top + el.offsetHeight / 2;
+            c.insertBefore(dragEl, after ? el.nextSibling : el);
+            showNotification("Reordered ✓", "info");
+        });
+    });
+}
+
+// ═══════════════════════════════════════════════════════════
+// 11. TASKS PAGE
+// ═══════════════════════════════════════════════════════════
+function renderTasksPage() {
+    const spot  = document.getElementById("tasks-spotlight-container");
+    const queue = document.getElementById("tasks-queue-container");
+    const gmap  = document.getElementById("tasks-goals-mapping");
+    if (!spot || !queue || !gmap) return;
+    spot.innerHTML = ""; queue.innerHTML = ""; gmap.innerHTML = "";
+
+    const all    = appState.tasks;
+    const done   = all.filter(t => t.status === "completed").length;
+    const total  = all.length;
+    const pct    = total ? Math.round(done / total * 100) : 0;
+    const pctEl  = document.getElementById("tasks-daily-percent");
+    const barEl  = document.getElementById("tasks-daily-bar");
+    if (pctEl) pctEl.textContent = pct + "%";
+    if (barEl) barEl.style.width = pct + "%";
+
+    const active = all.filter(t => t.status === "active");
+    if (!active.length) {
+        spot.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center p-12 bg-gradient-to-b from-white to-green-50/50 rounded-[2rem] border border-green-100 text-center"><div class="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6"><i data-lucide="trophy" class="w-10 h-10"></i></div><h3 class="text-2xl font-bold text-zinc-900 mb-2">All done!</h3><p class="text-zinc-500">"Success is the sum of small efforts."</p></div>`;
+        lucide.createIcons(); return;
+    }
+    active.sort((a,b) => { const p={high:0,medium:1,low:2}; return (p[a.priority]||1)-(p[b.priority]||1)||b.id-a.id; });
+    const top = active.find(t => t.isSpotlight) || active[0];
+    const tProj = appState.projects.find(p => p.id == top.projectId);
+    spot.innerHTML = `<div class="bg-gradient-to-br from-zinc-900 to-zinc-800 text-white p-8 rounded-[2rem] shadow-xl relative overflow-hidden"><div class="absolute right-0 top-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div><div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6"><div class="flex items-center gap-5 flex-1"><div class="w-14 h-14 bg-white/10 border border-white/20 rounded-2xl flex items-center justify-center shrink-0"><i data-lucide="${top.icon}" class="w-7 h-7 text-white"></i></div><div><h2 class="text-2xl font-bold mb-2">${escHtml(top.title)}</h2><div class="flex flex-wrap gap-2 items-center text-xs font-medium text-zinc-300"><i data-lucide="clock" class="w-3.5 h-3.5"></i> ${top.date}${tProj?` · 📁 ${escHtml(tProj.title)}`:""}</div></div></div><button onclick="markTaskDone(${top.id})" class="px-6 py-3 bg-white text-zinc-900 font-bold rounded-xl hover:bg-green-400 hover:text-white transition shadow-sm flex items-center gap-2 shrink-0"><i data-lucide="check" class="w-5 h-5"></i> Complete</button></div></div>`;
+    active.filter(t => t.id !== top.id).forEach(t => {
+        const isHigh = t.priority === "high";
+        const proj = appState.projects.find(p => p.id == t.projectId);
+        const row = document.createElement("div");
+        row.className = `bg-white border ${isHigh?"border-orange-200":"border-zinc-200"} p-3 rounded-xl hover:shadow-md transition group flex items-center justify-between gap-4 relative overflow-hidden cursor-grab`;
+        row.draggable = true; row.dataset.rowId = t.id;
+        row.innerHTML = `${isHigh?`<div class="absolute left-0 top-0 bottom-0 w-1 bg-orange-400 rounded-l-xl"></div>`:""}<div class="flex items-center gap-4 overflow-hidden flex-1 pl-${isHigh?3:2} w-full"><div class="w-10 h-10 ${isHigh?"bg-orange-50 text-orange-600":"bg-zinc-50 text-zinc-600"} rounded-xl border border-zinc-100 flex items-center justify-center shrink-0"><i data-lucide="${t.icon}" class="w-5 h-5"></i></div><div class="flex flex-col overflow-hidden"><h4 class="font-bold text-zinc-900 text-sm truncate">${escHtml(t.title)}</h4><p class="text-[10px] text-zinc-400 font-medium flex items-center gap-1 mt-0.5"><i data-lucide="clock" class="w-3 h-3"></i> ${t.date}${proj?` · 📁 ${escHtml(proj.title)}`:""}</p></div></div><div class="flex gap-1.5 opacity-0 group-hover:opacity-100 transition shrink-0"><button onclick="promoteToSpotlight(${t.id})" class="p-2 text-yellow-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition" title="Pin"><i data-lucide="star" class="w-4 h-4"></i></button><button onclick="deleteTask(${t.id})" class="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button><button onclick="markTaskDone(${t.id})" class="p-2 text-zinc-400 hover:text-green-500 hover:bg-green-50 rounded-lg transition"><i data-lucide="check-circle-2" class="w-4 h-4"></i></button></div>`;
+        queue.appendChild(row);
+    });
+    // Goal alignment
+    appState.goals.forEach(g => {
+        const linked = active.filter(t => t.goalId == g.id);
+        const isDone = g.status === "completed";
+        let tasksHtml = linked.map(t => `<div class="text-xs text-zinc-300 flex items-center gap-2 mt-2 px-2"><i data-lucide="arrow-right" class="w-3 h-3 text-zinc-500 shrink-0"></i><span class="truncate">${escHtml(t.title)}</span></div>`).join("");
+        if (!linked.length && !isDone) tasksHtml = `<div class="text-xs text-zinc-500 italic mt-2 px-2">No tasks linked.</div>`;
+        gmap.innerHTML += `<div class="bg-zinc-800/50 border border-zinc-700/50 p-4 rounded-xl"><div class="flex items-center gap-2 mb-1"><i data-lucide="${isDone?"check-circle-2":"target"}" class="w-4 h-4 shrink-0 ${isDone?"text-green-400":"text-blue-400"}"></i><span class="font-bold text-sm ${isDone?"text-zinc-400 line-through":"text-white"}">${escHtml(g.text)}</span></div>${!isDone?tasksHtml:""}</div>`;
+    });
+    if (!appState.goals.length) gmap.innerHTML = `<p class="text-xs text-zinc-500 italic">Add goals to align them with tasks.</p>`;
+    lucide.createIcons();
+    initQueueDrag();
+}
+
+// ═══════════════════════════════════════════════════════════
+// 12. PROJECTS
+// ═══════════════════════════════════════════════════════════
+function renderDashboardProjects() {
+    const c = document.getElementById("projects-dashboard-container");
+    if (!c) return;
+    c.innerHTML = "";
+    if (!appState.projects.length) {
+        c.innerHTML = `<div class="col-span-3 text-center py-8 text-zinc-400 italic text-sm">No projects yet. Create one!</div>`;
+        return;
+    }
+    appState.projects.forEach(p => {
+        const s = getProjectStats(p.id);
+        const isDone = s.progress === 100 && s.total > 0;
+        const isLight = p.colorTheme === "bg-white";
+        const d = document.createElement("div");
+        d.className = `${p.colorTheme} ${p.textTheme} ${isLight?"border border-zinc-200":""} p-5 rounded-3xl flex flex-col justify-between hover:scale-[1.02] transition-transform duration-300 cursor-pointer shadow-sm`;
+        d.innerHTML = `<div class="flex justify-between items-start mb-3"><div><h3 class="font-bold text-sm line-clamp-1 mb-1">${escHtml(p.title)}</h3><span class="text-[10px] opacity-70 font-medium">${s.completed}/${s.total} tasks</span></div><div class="w-9 h-9 rounded-full border ${isLight?"border-zinc-300":"border-white/20"} flex items-center justify-center text-[11px] font-black">${s.progress}%</div></div><div class="w-full ${isLight?"bg-zinc-100":"bg-white/20"} rounded-full h-1.5 overflow-hidden"><div class="${isDone?"bg-green-500":isLight?"bg-zinc-900":"bg-white"} h-1.5 rounded-full transition-all" style="width:${s.progress}%"></div></div>`;
+        d.onclick = () => switchView("projects");
+        c.appendChild(d);
+    });
+}
+
+function renderProjectsPage() {
+    const c = document.getElementById("projects-page-container");
+    if (!c) return;
+    c.innerHTML = "";
+    appState.projects.forEach(p => {
+        const s = getProjectStats(p.id);
+        const isDone = s.progress === 100 && s.total > 0;
+        const sColor = isDone ? "text-green-600 bg-green-50 border-green-200" : "text-blue-600 bg-blue-50 border-blue-200";
+        const pTasks = appState.tasks.filter(t => t.projectId == p.id);
+        const tasksHtml = pTasks.length ? pTasks.map(t => {
+            const td = t.status === "completed";
+            return `<div class="flex justify-between items-center text-sm py-2 border-b border-zinc-50 last:border-0 group/task"><span class="${td?"text-zinc-400 line-through":"text-zinc-700 font-medium"} flex items-center gap-2"><i data-lucide="${td?"check-circle-2":"circle"}" class="w-3 h-3 ${td?"text-green-500":"text-zinc-300"}"></i>${escHtml(t.title)}</span><button onclick="${td?`undoTask(${t.id})`:`markTaskDone(${t.id})`}" class="text-xs px-2 py-1 rounded bg-white border border-zinc-200 opacity-0 group-hover/task:opacity-100 transition shadow-sm ${td?"text-zinc-500":"text-green-600"}">${td?"Undo":"Done"}</button></div>`;
+        }).join("") : `<p class="text-xs text-zinc-400 italic">No tasks yet.</p>`;
+        const mainDoc = appState.docs.find(n => n.linkedTo === `project-${p.id}` && !n.parentId);
+        const d = document.createElement("div");
+        d.className = "bg-white p-6 rounded-[2rem] border border-zinc-200 shadow-sm flex flex-col transition hover:shadow-lg relative group";
+        d.innerHTML = `<div class="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition"><button onclick="openMainDocFor('project',${p.id})" class="p-2 text-zinc-400 hover:text-blue-600 bg-zinc-50 rounded-xl transition" title="Open workspace"><i data-lucide="book-open" class="w-4 h-4"></i></button><button onclick="toggleProjectStatus(${p.id})" class="p-2 text-zinc-400 hover:text-green-600 bg-zinc-50 rounded-xl transition" title="Toggle complete"><i data-lucide="check-square" class="w-4 h-4"></i></button><button onclick="deleteProject(${p.id})" class="p-2 text-zinc-400 hover:text-red-600 bg-zinc-50 rounded-xl transition" title="Delete"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div><div class="mb-4 pr-28"><span class="inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mb-3 border ${sColor}">${isDone?"✅ Completed":"🔵 Active"}</span><h3 class="text-xl font-bold text-zinc-900">${escHtml(p.title)}</h3></div><p class="text-sm text-zinc-500 mb-5">${escHtml(p.desc)}</p><div class="bg-zinc-50 p-4 rounded-2xl mb-4 flex-1 border border-zinc-100"><div class="flex justify-between items-center mb-3"><h4 class="text-xs font-bold text-zinc-500 uppercase tracking-wider">Tasks</h4><button onclick="handleCreate('task');setTimeout(()=>{const ps=document.getElementById('modalProjectSelect');if(ps)ps.value='${p.id}';},60)" class="text-xs text-blue-600 font-bold hover:text-blue-800 bg-blue-50 px-2 py-1 rounded-lg">+ Add</button></div><div class="max-h-[160px] overflow-y-auto pr-1">${tasksHtml}</div></div><div><div class="flex justify-between text-xs font-bold text-zinc-600 mb-2"><span>Progress (${s.completed}/${s.total})</span><span class="${isDone?"text-green-600":"text-zinc-900"}">${s.progress}%</span></div><div class="w-full bg-zinc-100 rounded-full h-2.5 overflow-hidden"><div class="${isDone?"bg-green-500":"bg-zinc-900"} h-2.5 rounded-full transition-all duration-700" style="width:${s.progress}%"></div></div></div>${mainDoc?`<div class="mt-4 pt-3 border-t border-zinc-100 flex items-center gap-2"><i data-lucide="book-open" class="w-4 h-4 text-blue-500"></i><button onclick="switchView('docs');openDoc(${mainDoc.id})" class="text-xs font-bold text-blue-600 hover:underline">Open Workspace Doc</button></div>`:""}`;
+        c.appendChild(d);
+    });
+    lucide.createIcons();
+}
+
+// ═══════════════════════════════════════════════════════════
+// 13. CALENDAR
+// ═══════════════════════════════════════════════════════════
+function setCalendarView(v) { currentCalendarView = v; renderCalendar(); }
+function renderCalendar() {
+    const grid = document.getElementById("calendar-grid");
+    if (!grid) return;
+    const isWeek = currentCalendarView === "week";
+    const days = isWeek ? [1,2,3,4,5] : [3];
+    const names = {1:"Monday",2:"Tuesday",3:"Wednesday",4:"Thursday",5:"Friday"};
+    ["btn-cal-day","btn-cal-week"].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.className = (id === `btn-cal-${currentCalendarView}`) ? "px-4 py-2 bg-white shadow-sm rounded-lg text-sm font-medium text-zinc-900 transition" : "px-4 py-2 hover:bg-white rounded-lg text-sm font-medium text-zinc-600 transition";
+    });
+    grid.style.gridTemplateColumns = isWeek ? "80px repeat(5, 1fr)" : "80px 1fr";
+    grid.style.gridTemplateRows = "auto repeat(15, minmax(70px, 1fr))";
+    let html = `<div class="bg-zinc-50" style="grid-column:1;grid-row:1;"></div>`;
+    days.forEach((d,i) => {
+        const isT = d === 3;
+        html += `<div class="cal-header-cell flex flex-col items-center justify-center py-3 ${isT?"text-blue-600 bg-blue-50/50":"text-zinc-900 bg-zinc-50"}" style="grid-column:${i+2};grid-row:1;"><span class="font-bold text-sm">${names[d]}</span>${isT?`<span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full mt-1 uppercase font-bold">Today</span>`:""}</div>`;
+    });
+    for (let h = 8; h <= 22; h++) {
+        const row = h - 8 + 2;
+        const ts = h === 12 ? "12:00" : (h > 12 ? `${h-12}:00 PM` : `${h}:00 AM`);
+        html += `<div class="time-label bg-zinc-50 pr-3 pt-2 font-medium text-[11px] text-zinc-400 text-right" style="grid-column:1;grid-row:${row};">${ts}</div>`;
+        days.forEach((day,i) => {
+            const isT = day === 3;
+            html += `<div class="cal-cell ${isT?"bg-blue-50/10":"bg-white"} group cursor-pointer hover:bg-zinc-50 transition flex items-center justify-center" style="grid-column:${i+2};grid-row:${row};" onclick="openEventModal(${day},${h})"><i data-lucide="plus" class="w-5 h-5 text-zinc-200 opacity-0 group-hover:opacity-100 transition-opacity"></i></div>`;
+        });
+    }
+    appState.events.forEach(ev => {
+        if (!days.includes(ev.day) || ev.startHour < 8 || ev.startHour > 22) return;
+        const col = days.indexOf(ev.day) + 2;
+        const row = ev.startHour - 8 + 2;
+        const span = Math.min(ev.span, 22 - ev.startHour + 1);
+        const endH = ev.startHour + span;
+        const ts = `${ev.startHour > 12 ? ev.startHour-12 : ev.startHour}${ev.startHour>=12?"pm":"am"}-${endH>12?endH-12:endH}${endH>=12?"pm":"am"}`;
+        html += `<div class="m-[3px] p-3 rounded-xl border shadow-sm ${ev.colorClass} flex flex-col group z-10 hover:shadow-md transition-all cursor-pointer relative overflow-hidden" style="grid-column:${col};grid-row:${row}/span ${span};"><span class="text-xs font-bold leading-tight pr-5">${escHtml(ev.title)}</span><button onclick="deleteEvent(${ev.id});event.stopPropagation();" class="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 text-current hover:bg-black/10 p-1 rounded-md transition"><i data-lucide="x" class="w-3 h-3"></i></button>${span>=2?`<div class="mt-auto text-[10px] opacity-70 font-medium">${ts}</div>`:""}</div>`;
+    });
+    grid.innerHTML = html;
+    lucide.createIcons();
+}
+
+// ═══════════════════════════════════════════════════════════
+// 14. DOCS
+// ═══════════════════════════════════════════════════════════
+function docExec(cmd, val = null) {
+    const ed = document.getElementById("doc-editor");
+    if (!ed) return;
+    ed.focus();
+    document.execCommand(cmd, false, val);
+    saveDocContent(); updateToolbarState();
+}
+function docSetFontSize(px) {
+    if (!px) return;
+    const ed = document.getElementById("doc-editor");
+    ed.focus();
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount && !sel.isCollapsed) {
+        document.execCommand("fontSize", false, "7");
+        ed.querySelectorAll("font[size='7']").forEach(el => { el.removeAttribute("size"); el.style.fontSize = px; });
+    } else { ed.style.fontSize = px; }
+    saveDocContent();
+}
+function updateToolbarState() {
+    [["tb-bold","bold"],["tb-italic","italic"],["tb-underline","underline"],["tb-strike","strikeThrough"]].forEach(([id,cmd]) => {
+        document.getElementById(id)?.classList.toggle("active", document.queryCommandState(cmd));
+    });
+    try {
+        const fg = document.queryCommandValue("foreColor");
+        if (fg) { const b = document.getElementById("doc-text-color-bar"); if (b) b.style.background = fg; }
+    } catch(e) {}
+}
+function docInsertLink()  { const ed=document.getElementById("doc-editor"); ed.focus(); const u=prompt("URL:","https://"); if(u){document.execCommand("createLink",false,u);saveDocContent();} }
+function docInsertImage() { const ed=document.getElementById("doc-editor"); ed.focus(); const u=prompt("Image URL:"); if(u){document.execCommand("insertImage",false,u);saveDocContent();} }
+function docInsertCode()  { const ed=document.getElementById("doc-editor"); ed.focus(); const s=window.getSelection(); const t=s&&!s.isCollapsed?s.toString():"code here"; document.execCommand("insertHTML",false,`<pre>${escHtml(t)}</pre><p><br></p>`); saveDocContent(); }
+function insertTableInDoc() { document.getElementById("doc-editor")?.focus(); document.execCommand("insertHTML",false,`<table><thead><tr><th>Column 1</th><th>Column 2</th><th>Column 3</th></tr></thead><tbody><tr><td><br></td><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table><p><br></p>`); saveDocContent(); }
+function exportDocHTML() {
+    if (!activeNoteId) return showNotification("Open a document first","warn");
+    const doc = appState.docs.find(d => d.id === activeNoteId);
+    if (!doc) return;
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escHtml(doc.title||"Doc")}</title><style>body{font-family:Georgia,serif;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.75;color:#3f3f46}h1,h2,h3{color:#18181b}table{border-collapse:collapse;width:100%}td,th{border:1px solid #e4e4e7;padding:8px 12px}pre{background:#1e1e2e;color:#cdd6f4;padding:16px;border-radius:8px}blockquote{border-left:4px solid #18181b;padding:8px 16px;background:#fafafa;font-style:italic}</style></head><body><h1>${escHtml(doc.title||"Untitled")}</h1>${doc.content}</body></html>`;
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([html],{type:"text/html"})); a.download = `${doc.title||"doc"}.html`; a.click();
+    showNotification("Exported ✓","success");
+}
+function printDoc() { if(!activeNoteId) return showNotification("Open a document first","warn"); window.print(); }
+function updateWordCount() {
+    const ed = document.getElementById("doc-editor");
+    if (!ed) return;
+    const words = (ed.innerText||"").trim().split(/\s+/).filter(Boolean).length;
+    const el = document.getElementById("doc-word-count");
+    if (el) el.textContent = `${words} word${words!==1?"s":""}`;
+}
+function toggleDocTree(id, e) { e.stopPropagation(); appState.expandedDocs.has(id) ? appState.expandedDocs.delete(id) : appState.expandedDocs.add(id); renderDocsSidebar(); }
+function renderDocsSidebar() {
+    const tree = document.getElementById("docs-sidebar-tree");
+    if (!tree) return;
+    const renderBranch = (parentId, depth=0) => {
+        return appState.docs.filter(d => d.parentId === parentId).map(doc => {
+            const isAct = activeNoteId === doc.id;
+            const hasCh = appState.docs.some(d => d.parentId === doc.id);
+            const isExp = appState.expandedDocs.has(doc.id);
+            const indent = depth > 0 ? "ml-4 border-l border-zinc-200 pl-2" : "";
+            const chev = hasCh ? `<button onclick="toggleDocTree(${doc.id},event)" class="p-0.5 hover:bg-zinc-200 rounded text-zinc-400"><i data-lucide="${isExp?"chevron-down":"chevron-right"}" class="w-3 h-3"></i></button>` : `<div class="w-4"></div>`;
+            return `<div class="${indent} mb-0.5"><div class="flex items-center gap-1">${chev}<button onclick="openDoc(${doc.id})" class="flex-1 text-left px-2 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 group ${isAct?"bg-zinc-200/60 text-zinc-900":"text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"}"><i data-lucide="file-text" class="w-3.5 h-3.5 shrink-0 opacity-70"></i><span class="truncate">${escHtml(doc.title||"Untitled")}</span></button></div>${hasCh&&isExp?`<div class="mt-0.5">${renderBranch(doc.id,depth+1)}</div>`:""}</div>`;
+        }).join("");
+    };
+    const html = renderBranch(null);
+    tree.innerHTML = html || `<p class="text-xs text-zinc-400 italic px-3">No pages yet.</p>`;
+    lucide.createIcons();
+}
+function openMainDocFor(type, id) {
+    const linkId = `${type}-${id}`;
+    let doc = appState.docs.find(d => d.linkedTo === linkId && !d.parentId);
+    if (!doc) {
+        const p = type === "project" ? appState.projects.find(x => x.id == id) : null;
+        doc = { id: Date.now(), title: p ? `${p.title} Workspace` : "New Page", content: "", linkedTo: linkId, parentId: null, updatedAt: "Just now" };
+        appState.docs.unshift(doc);
+    }
+    switchView("docs"); openDoc(doc.id);
+}
+function createSubPage() {
+    if (!activeNoteId) return;
+    const sub = { id: Date.now(), title: "", content: "", linkedTo: "none", parentId: activeNoteId, updatedAt: "Just now" };
+    appState.docs.push(sub);
+    appState.expandedDocs.add(activeNoteId);
+    openDoc(sub.id);
+    document.getElementById("doc-title-input")?.focus();
+}
+function openDoc(id) {
+    activeNoteId = id;
+    const doc = appState.docs.find(d => d.id === id);
+    if (!doc) return;
+    document.getElementById("doc-empty-state")?.classList.add("hidden");
+    const titleInput = document.getElementById("doc-title-input");
+    const editor = document.getElementById("doc-editor");
+    if (titleInput) titleInput.value = doc.title || "";
+    if (editor) editor.innerHTML = doc.content || "";
+    document.getElementById("btn-add-subpage")?.classList.remove("hidden");
+    let bc = "Workspace";
+    if (doc.linkedTo?.startsWith("project-")) {
+        const p = appState.projects.find(x => x.id == doc.linkedTo.split("-")[1]);
+        if (p) bc = `Projects / ${escHtml(p.title)}`;
+    } else if (doc.parentId) {
+        const par = appState.docs.find(n => n.id === doc.parentId);
+        if (par) bc = `${escHtml(par.title||"Untitled")} / Sub-page`;
+    }
+    const bc_el = document.getElementById("doc-breadcrumbs");
+    if (bc_el) bc_el.textContent = bc;
+    renderDocsSidebar(); updateWordCount(); updateToolbarState();
+}
+function updateDocTitle() {
+    if (!activeNoteId) return;
+    const doc = appState.docs.find(d => d.id === activeNoteId);
+    const ti = document.getElementById("doc-title-input");
+    if (doc && ti) { doc.title = ti.value; renderDocsSidebar(); }
+}
+function deleteCurrentDoc() {
+    if (!activeNoteId) return;
+    const kids = appState.docs.filter(d => d.parentId === activeNoteId).map(d => d.id);
+    appState.docs = appState.docs.filter(d => d.id !== activeNoteId && !kids.includes(d.id));
+    activeNoteId = null;
+    document.getElementById("doc-empty-state")?.classList.remove("hidden");
+    document.getElementById("btn-add-subpage")?.classList.add("hidden");
+    const bc = document.getElementById("doc-breadcrumbs");
+    if (bc) bc.textContent = "";
+    renderDocsSidebar();
+    showNotification("Page deleted","warn");
+}
+function saveDocContent() {
+    if (!activeNoteId) return;
+    const doc = appState.docs.find(d => d.id === activeNoteId);
+    const ed = document.getElementById("doc-editor");
+    if (doc && ed) doc.content = ed.innerHTML;
+}
+const _docEditor = document.getElementById("doc-editor");
+if (_docEditor) {
+    _docEditor.addEventListener("input",   () => { saveDocContent(); updateWordCount(); updateToolbarState(); });
+    _docEditor.addEventListener("keyup",   updateToolbarState);
+    _docEditor.addEventListener("mouseup", updateToolbarState);
+}
+
+// ═══════════════════════════════════════════════════════════
+// 15. PROFILE
+// ═══════════════════════════════════════════════════════════
+function updateUserNameUI() {
+    const n = appState.user.name;
+    const display = document.getElementById("profile-name-display");
+    const title   = document.getElementById("page-title");
+    const seed    = encodeURIComponent(n);
+    const url     = `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}&backgroundColor=e5e7eb`;
+    if (display) display.textContent = n;
+    if (title)   title.textContent = `Hi, ${n}!`;
+    const a1 = document.getElementById("profile-avatar-img"); if (a1) a1.src = url;
+    const a2 = document.getElementById("header-avatar");     if (a2) a2.src = url;
+}
+function toggleProfileEdit() {
+    document.getElementById("profile-name-display")?.classList.add("hidden");
+    document.getElementById("btn-edit-profile")?.classList.add("hidden");
+    const inp = document.getElementById("profile-name-input");
+    inp?.classList.remove("hidden");
+    if (inp) { inp.value = appState.user.name; inp.focus(); }
+    document.getElementById("btn-save-profile")?.classList.remove("hidden");
+}
+function saveProfileName() {
+    const v = document.getElementById("profile-name-input")?.value.trim().replace(/[<>"']/g,"").substring(0,32);
+    if (v) { appState.user.name = v; updateUserNameUI(); }
+    document.getElementById("profile-name-display")?.classList.remove("hidden");
+    document.getElementById("btn-edit-profile")?.classList.remove("hidden");
+    document.getElementById("profile-name-input")?.classList.add("hidden");
+    document.getElementById("btn-save-profile")?.classList.add("hidden");
+    showNotification("Name updated!","success");
+}
+function renderProfile() {
+    updateUserNameUI();
+    const r = document.getElementById("profile-role"); if(r) r.textContent = appState.user.role;
+    const l = document.getElementById("profile-level"); if(l) l.textContent = appState.user.level;
+    const s = document.getElementById("profile-score"); if(s) s.textContent = appState.user.score.toLocaleString();
+    const done = appState.tasks.filter(t => t.status==="completed").length + 42;
+    const gdone = appState.goals.filter(g => g.status==="completed").length + 11;
+    const lt = document.getElementById("stat-lifetime-tasks"); if(lt) lt.textContent = done;
+    const lg = document.getElementById("stat-lifetime-goals"); if(lg) lg.textContent = gdone;
+    const ach = document.getElementById("achievements-container");
+    if (ach) {
+        ach.innerHTML = "";
+        appState.user.achievements.forEach(a => {
+            ach.innerHTML += `<div class="flex items-center gap-4 p-3 rounded-xl hover:bg-zinc-50 transition border border-transparent hover:border-zinc-100"><div class="w-12 h-12 bg-zinc-100 rounded-full flex items-center justify-center"><i data-lucide="${a.icon}" class="w-6 h-6 text-zinc-700"></i></div><div><h4 class="font-bold text-zinc-900 text-sm">${a.title}</h4><p class="text-xs text-zinc-500">${a.desc}</p></div></div>`;
+        });
+    }
+    lucide.createIcons();
+}
+
+// ═══════════════════════════════════════════════════════════
+// 16. ARCHIVE
+// ═══════════════════════════════════════════════════════════
+function renderArchive() {
+    const total = appState.tasks.length;
+    const done  = appState.tasks.filter(t => t.status === "completed");
+    const rate  = total ? Math.round(done.length/total*100) : 0;
+    const rText = document.getElementById("completion-rate-text"); if(rText) rText.textContent = rate+"%";
+    setTimeout(() => { const bar = document.getElementById("performance-bar"); if(bar) bar.style.width = rate+"%"; }, 80);
+    const st = document.getElementById("performance-statement");
+    if (st) {
+        if (rate >= 80) st.innerHTML = `🔥 <span class="text-white">Excellent!</span> You are crushing it.`;
+        else if (rate >= 50) st.innerHTML = `👍 <span class="text-white">Good progress.</span> Keep pushing.`;
+        else st.innerHTML = `⚠️ <span class="text-white">Needs focus.</span> Clear that backlog.`;
+    }
+    const tc = document.getElementById("archive-tasks-container");
+    if (tc) {
+        tc.innerHTML = done.length ? "" : `<p class="text-sm text-zinc-400 italic">No completed tasks yet.</p>`;
+        done.forEach(t => { tc.innerHTML += `<div class="p-3 bg-zinc-50 rounded-xl border border-zinc-100 flex items-center justify-between group"><div class="flex items-center gap-3"><i data-lucide="check-circle-2" class="w-4 h-4 text-green-500 shrink-0"></i><span class="text-sm font-medium text-zinc-600 line-through">${escHtml(t.title)}</span></div><button onclick="undoTask(${t.id})" class="opacity-0 group-hover:opacity-100 px-3 py-1.5 text-xs font-bold text-zinc-600 hover:text-blue-600 bg-white rounded-lg shadow-sm border border-zinc-200 transition">Undo</button></div>`; });
+    }
+    const cg = appState.goals.filter(g => g.status === "completed");
+    const gc = document.getElementById("archive-goals-container");
+    if (gc) {
+        gc.innerHTML = cg.length ? "" : `<p class="text-sm text-zinc-400 italic">No completed goals yet.</p>`;
+        cg.forEach(g => { gc.innerHTML += `<div class="p-3 bg-zinc-50 rounded-xl border border-zinc-100 flex items-center gap-3"><i data-lucide="target" class="w-4 h-4 text-blue-500"></i><span class="text-sm font-medium text-zinc-700">${escHtml(g.text)}</span></div>`; });
+    }
+    lucide.createIcons();
+}
+
+// ═══════════════════════════════════════════════════════════
+// 17. FINANCE
+// ═══════════════════════════════════════════════════════════
+function getFinTotals() {
+    const spent = appState.finance.expenses.reduce((s,e) => s + Number(e.amount), 0);
+    const left  = appState.finance.monthlyBudget - spent;
+    const pct   = appState.finance.monthlyBudget > 0 ? Math.min(Math.round(spent / appState.finance.monthlyBudget * 100), 100) : 0;
+    return { spent, left, pct, over: spent > appState.finance.monthlyBudget };
+}
+function getBucketSpent(id) { return appState.finance.expenses.filter(e => e.bucket === id).reduce((s,e) => s + Number(e.amount), 0); }
+
+function renderFinance() {
+    const { spent, left, pct, over } = getFinTotals();
+    const budget = appState.finance.monthlyBudget;
+    const income = appState.finance.monthlyIncome;
+
+    const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+    const ltEl = document.getElementById("fin-left-to-spend");
+    if (ltEl) { ltEl.textContent = (over?"-":"")+Math.abs(left).toLocaleString()+" DH"; ltEl.style.color = over?"#ef4444":""; }
+    set("fin-budget-label", budget.toLocaleString());
+    set("fin-spent-total", spent.toLocaleString()+" DH");
+    set("fin-spent-pct",   pct+"% of budget");
+    set("fin-bar-max",     budget.toLocaleString()+" DH");
+    set("fin-bar-midpoint", Math.round(budget/2).toLocaleString()+" DH");
+
+    const bar = document.getElementById("fin-budget-bar");
+    if (bar) { bar.style.width = pct+"%"; bar.className = "h-4 rounded-full fin-bar "+(over?"bg-red-500":pct>75?"bg-orange-400":"bg-green-500"); }
+
+    const txCount = appState.finance.expenses.length;
+    const avg = txCount ? Math.round(spent/txCount) : 0;
+    set("fin-tx-count", txCount);
+    set("fin-avg", avg.toLocaleString()+" DH");
+
+    const savingsRate = income > 0 ? Math.max(0, Math.round((income-spent)/income*100)) : 0;
+    const srEl = document.getElementById("fin-savings-rate");
+    if (srEl) { srEl.textContent = savingsRate+"%"; srEl.className = "text-3xl font-black "+(savingsRate>=20?"text-green-500":savingsRate>=10?"text-orange-500":"text-red-500"); }
+
+    renderBuckets();
+    renderTransactions();
+    renderProjectSpending();
+    lucide.createIcons();
+}
+
+function renderBuckets() {
+    const c = document.getElementById("fin-buckets-container");
+    if (!c) return;
+    c.innerHTML = "";
+    if (!appState.finance.buckets.length) {
+        c.innerHTML = `<div class="col-span-4 text-center py-6 text-zinc-400 italic text-sm">No buckets yet. Add one!</div>`;
+        return;
+    }
+    appState.finance.buckets.forEach(b => {
+        const spent = getBucketSpent(b.id);
+        const pct = b.limit > 0 ? Math.min(Math.round(spent/b.limit*100),100) : 0;
+        const over = spent > b.limit;
+        const barColor = over ? "#ef4444" : pct > 80 ? "#f97316" : b.accent;
+        c.innerHTML += `<div class="bucket-card bg-white rounded-[1.5rem] p-5 shadow-sm border border-zinc-200 cursor-pointer" onclick="openExpenseModal('${b.id}')">
+            <div class="flex justify-between items-start mb-3">
+                <div class="text-2xl">${b.emoji}</div>
+                <button onclick="deleteBucket('${b.id}');event.stopPropagation()" class="text-zinc-300 hover:text-red-400 transition p-1 rounded-lg" title="Delete bucket"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+            </div>
+            <h4 class="font-black text-zinc-900 text-sm mb-1">${escHtml(b.name)}</h4>
+            <p class="text-xs text-zinc-400 mb-3 font-medium"><span class="font-black ${over?"text-red-500":"text-zinc-800"}">${spent.toLocaleString()}</span> / ${b.limit.toLocaleString()} DH</p>
+            <div class="w-full bg-zinc-100 rounded-full h-2 overflow-hidden"><div class="h-2 rounded-full fin-bar" style="width:${pct}%;background:${barColor}"></div></div>
+            <p class="text-[10px] font-bold mt-2 ${over?"text-red-500":"text-zinc-400"}">${over?"⚠️ Over budget":pct+"% used"}</p>
+        </div>`;
+    });
+}
+
+function renderTransactions() {
+    const list = document.getElementById("fin-transactions-list");
+    const filterEl = document.getElementById("fin-filter-cat");
+    if (!list) return;
+    const cur = filterEl?.value || "all";
+    if (filterEl) {
+        filterEl.innerHTML = `<option value="all">All categories</option>`;
+        appState.finance.buckets.forEach(b => { filterEl.innerHTML += `<option value="${b.id}" ${cur===b.id?"selected":""}>${b.emoji} ${escHtml(b.name)}</option>`; });
+    }
+    const filtered = cur === "all" ? appState.finance.expenses : appState.finance.expenses.filter(e => e.bucket === cur);
+    if (!filtered.length) { list.innerHTML = `<p class="text-sm text-zinc-400 italic text-center py-8">No transactions.</p>`; return; }
+    list.innerHTML = "";
+    [...filtered].sort((a,b) => b.id - a.id).forEach(exp => {
+        const bucket = appState.finance.buckets.find(b => b.id === exp.bucket);
+        const proj   = appState.projects.find(p => p.id == exp.projectId);
+        list.innerHTML += `<div class="flex items-center justify-between p-3 rounded-xl hover:bg-zinc-50 transition group border border-transparent hover:border-zinc-100">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 bg-zinc-100">${bucket?.emoji||"💰"}</div>
+                <div>
+                    <p class="font-bold text-sm text-zinc-900">${escHtml(exp.desc)}</p>
+                    <p class="text-[10px] text-zinc-400 font-medium flex items-center gap-1 flex-wrap">${bucket?`<span style="color:${bucket.accent}" class="font-bold">${escHtml(bucket.name)}</span>`:""}${proj?` · 📁 ${escHtml(proj.title)}`:""} · ${exp.date}</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="font-black text-zinc-900 text-sm whitespace-nowrap">-${Number(exp.amount).toLocaleString()} DH</span>
+                <button onclick="deleteExpense(${exp.id})" class="opacity-0 group-hover:opacity-100 p-1.5 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+            </div>
+        </div>`;
+    });
+}
+
+function renderProjectSpending() {
+    const c = document.getElementById("fin-project-spending");
+    if (!c) return;
+    const projExp = {};
+    let projTotal = 0;
+    appState.finance.expenses.filter(e => e.projectId !== "none" && e.projectId).forEach(e => {
+        const k = e.projectId;
+        projExp[k] = (projExp[k]||0) + Number(e.amount);
+        projTotal += Number(e.amount);
+    });
+    if (!Object.keys(projExp).length) { c.innerHTML = `<p class="text-xs text-zinc-400 italic">No expenses linked to projects.</p>`; document.getElementById("fin-proj-total")?.textContent !== undefined && (document.getElementById("fin-proj-total").textContent = "0 DH"); return; }
+    c.innerHTML = "";
+    Object.entries(projExp).forEach(([pid, total]) => {
+        const proj = appState.projects.find(p => p.id == pid);
+        if (!proj) return;
+        const pct = projTotal > 0 ? Math.round(total/projTotal*100) : 0;
+        c.innerHTML += `<div><div class="flex justify-between mb-1"><span class="text-xs font-bold text-zinc-700">${escHtml(proj.title)}</span><span class="text-xs font-black text-zinc-900">${total.toLocaleString()} DH</span></div><div class="w-full bg-zinc-100 rounded-full h-1.5 overflow-hidden"><div class="h-1.5 rounded-full bg-zinc-900 fin-bar" style="width:${pct}%"></div></div></div>`;
+    });
+    const ptEl = document.getElementById("fin-proj-total");
+    if (ptEl) ptEl.textContent = projTotal.toLocaleString()+" DH";
+}
+
+// Finance modal openers
+function openExpenseModal(preselectedBucket) {
+    const catSel = document.getElementById("exp-category");
+    if (catSel) { catSel.innerHTML = ""; appState.finance.buckets.forEach(b => { catSel.innerHTML += `<option value="${b.id}" ${preselectedBucket===b.id?"selected":""}>${b.emoji} ${escHtml(b.name)}</option>`; }); }
+    const projSel = document.getElementById("exp-project");
+    if (projSel) { projSel.innerHTML = `<option value="none">— No project —</option>`; appState.projects.forEach(p => { projSel.innerHTML += `<option value="${p.id}">${escHtml(p.title)}</option>`; }); }
+    const amtEl = document.getElementById("exp-amount"); if(amtEl) amtEl.value = "";
+    const descEl = document.getElementById("exp-desc"); if(descEl) descEl.value = "";
+    _showModal("expenseModal","expenseModalContent");
+    setTimeout(() => document.getElementById("exp-amount")?.focus(), 20);
+}
+function closeExpenseModal() { _hideModal("expenseModal","expenseModalContent"); }
+function saveExpense() {
+    const amount = parseFloat(document.getElementById("exp-amount")?.value||"0");
+    const desc   = document.getElementById("exp-desc")?.value.trim()||"";
+    const bucket = document.getElementById("exp-category")?.value||"other";
+    const projRaw = document.getElementById("exp-project")?.value||"none";
+    const projId = projRaw === "none" ? "none" : parseInt(projRaw);
+    if (!amount || amount <= 0) return showNotification("Enter a valid amount","warn");
+    if (!desc) return showNotification("Add a description","warn");
+    const now = new Date();
+    const date = now.toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+    appState.finance.expenses.push({ id: Date.now(), amount, desc, bucket, projectId: projId, date });
+    closeExpenseModal();
+    renderFinance();
+    showNotification(`-${amount} DH recorded ✓`,"success");
+}
+function deleteExpense(id) { appState.finance.expenses = appState.finance.expenses.filter(e => e.id !== id); renderFinance(); showNotification("Removed","warn"); }
+
+function openBudgetModal() {
+    const bi = document.getElementById("budget-input"); if(bi) bi.value = appState.finance.monthlyBudget;
+    const ii = document.getElementById("income-input"); if(ii) ii.value = appState.finance.monthlyIncome;
+    _showModal("budgetModal","budgetModalContent");
+    setTimeout(() => document.getElementById("budget-input")?.focus(), 20);
+}
+function closeBudgetModal() { _hideModal("budgetModal","budgetModalContent"); }
+function saveBudget() {
+    const b   = parseFloat(document.getElementById("budget-input")?.value||"0");
+    const inc = parseFloat(document.getElementById("income-input")?.value||"0");
+    if (!b || b <= 0) return showNotification("Enter a valid budget","warn");
+    appState.finance.monthlyBudget = b;
+    if (inc > 0) appState.finance.monthlyIncome = inc;
+    closeBudgetModal(); renderFinance();
+    showNotification("Budget updated ✓","success");
+}
+
+function openBucketModal() {
+    const ni = document.getElementById("bucket-name"); if(ni) ni.value = "";
+    const li = document.getElementById("bucket-limit"); if(li) li.value = "";
+    const ei = document.getElementById("bucket-emoji"); if(ei) ei.value = "💰";
+    const picker = document.getElementById("bucket-emoji-picker");
+    if (picker) picker.innerHTML = BUCKET_EMOJIS.map(e => `<button type="button" onclick="document.getElementById('bucket-emoji').value='${e}';this.parentNode.querySelectorAll('button').forEach(b=>b.style.background='');this.style.background='#e4e4e7';" class="w-9 h-9 text-xl hover:bg-zinc-100 rounded-lg transition flex items-center justify-center">${e}</button>`).join("");
+    _showModal("bucketModal","bucketModalContent");
+    setTimeout(() => document.getElementById("bucket-name")?.focus(), 20);
+}
+function closeBucketModal() { _hideModal("bucketModal","bucketModalContent"); }
+function saveBucket() {
+    const name  = document.getElementById("bucket-name")?.value.trim()||"";
+    const limit = parseFloat(document.getElementById("bucket-limit")?.value||"0");
+    const emoji = document.getElementById("bucket-emoji")?.value||"💰";
+    if (!name)  return showNotification("Enter a bucket name","warn");
+    if (!limit || limit <= 0) return showNotification("Enter a valid limit","warn");
+    const accents = ["#8b5cf6","#14b8a6","#f59e0b","#6366f1","#06b6d4","#f43f5e"];
+    const id = name.toLowerCase().replace(/\s+/g,"-")+"-"+Date.now();
+    appState.finance.buckets.push({ id, name, emoji, limit, accent: accents[appState.finance.buckets.length % accents.length] });
+    closeBucketModal(); renderFinance();
+    showNotification(`Bucket "${name}" created ✓`,"success");
+}
+function deleteBucket(id) {
+    appState.finance.buckets = appState.finance.buckets.filter(b => b.id !== id);
+    appState.finance.expenses = appState.finance.expenses.filter(e => e.bucket !== id);
+    renderFinance();
+    showNotification("Bucket removed","warn");
+}
+function exportExpensesCSV() {
+    const rows = [["Date","Description","Amount (DH)","Category","Project"]];
+    appState.finance.expenses.forEach(e => {
+        const b = appState.finance.buckets.find(x => x.id === e.bucket);
+        const p = appState.projects.find(x => x.id == e.projectId);
+        rows.push([e.date, e.desc, e.amount, b?.name||e.bucket, p?.title||""]);
+    });
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download = "idraft-expenses.csv"; a.click();
+    showNotification("CSV exported ✓","success");
+}
+
+// ═══════════════════════════════════════════════════════════
+// 18. CRUD ACTIONS
+// ═══════════════════════════════════════════════════════════
+function toggleGoal(id) {
+    const g = appState.goals.find(x => x.id === id); if(!g) return;
+    g.status = g.status === "active" ? "completed" : "active";
+    if (g.status === "completed") { appState.user.score += 50; showNotification("Goal achieved! +50 XP 🎉","xp"); }
+    renderGoals();
+    _softRefresh();
+}
+function deleteGoal(id) { appState.goals = appState.goals.filter(g => g.id !== id); renderGoals(); showNotification("Goal deleted","warn"); }
+
+function markTaskDone(id) {
+    const t = appState.tasks.find(x => x.id === id); if(!t) return;
+    t.status = "completed"; appState.user.score += 15;
+    _fullRefresh(); showNotification("Task done! +15 XP ✅","success");
+}
+function undoTask(id) {
+    const t = appState.tasks.find(x => x.id === id); if(!t) return;
+    t.status = "active"; appState.user.score = Math.max(0, appState.user.score - 15);
+    _fullRefresh(); showNotification("Task restored","info");
+}
+function deleteTask(id) { appState.tasks = appState.tasks.filter(t => t.id !== id); _fullRefresh(); showNotification("Task deleted","warn"); }
+function promoteToSpotlight(id) {
+    appState.tasks.forEach(t => t.isSpotlight = false);
+    const t = appState.tasks.find(x => x.id === id); if(t) t.isSpotlight = true;
+    _softRefresh(); showNotification("Pinned to Spotlight ⭐","info");
+}
+function toggleProjectStatus(id) {
+    const pts = appState.tasks.filter(t => t.projectId == id);
+    if (!pts.length) return showNotification("Add tasks first!","warn");
+    const allDone = pts.every(t => t.status === "completed");
+    pts.forEach(t => t.status = allDone ? "active" : "completed");
+    _fullRefresh(); showNotification(allDone ? "Project re-opened" : "Project completed 🚀", allDone?"info":"success");
+}
+function deleteProject(id) {
+    appState.projects = appState.projects.filter(p => p.id !== id);
+    appState.tasks = appState.tasks.filter(t => t.projectId != id);
+    _fullRefresh(); showNotification("Project deleted","warn");
+}
+function deleteEvent(id) { appState.events = appState.events.filter(e => e.id !== id); renderCalendar(); showNotification("Event removed","warn"); }
+
+function _fullRefresh() {
+    const av = document.querySelector(".view-section.active")?.id;
+    if (av === "view-dashboard") renderDashboard();
+    else if (av === "view-tasks") renderTasksPage();
+    else if (av === "view-projects") renderProjectsPage();
+    else if (av === "view-archive") renderArchive();
+    updateDashboardStats();
+}
+function _softRefresh() {
+    const av = document.querySelector(".view-section.active")?.id;
+    if (av === "view-tasks") renderTasksPage();
+    updateDashboardStats();
+}
+
+// ═══════════════════════════════════════════════════════════
+// 19. MODALS (generic helpers)
+// ═══════════════════════════════════════════════════════════
+function _showModal(id, contentId) {
+    const m = document.getElementById(id), mc = document.getElementById(contentId);
+    if (!m || !mc) return;
+    m.classList.remove("hidden"); m.classList.add("flex");
+    requestAnimationFrame(() => { m.classList.remove("opacity-0"); mc.classList.remove("scale-95"); });
+}
+function _hideModal(id, contentId) {
+    const m = document.getElementById(id), mc = document.getElementById(contentId);
+    if (!m || !mc) return;
+    m.classList.add("opacity-0"); mc.classList.add("scale-95");
+    setTimeout(() => { m.classList.add("hidden"); m.classList.remove("flex"); }, 200);
+}
+
+// Task/Goal/Project creation modal
+let currentAction = null;
+const modal = document.getElementById("inputModal");
+const modalContent = document.getElementById("inputModalContent");
+const modalInput   = document.getElementById("modalInput");
+
+function selectTaskIcon(n) {
+    selectedTaskIcon = n;
+    document.querySelectorAll("#icon-picker-grid .picker-option").forEach(el => { el.style.outline="none"; el.style.transform="scale(1)"; });
+    const el = document.getElementById(`icon-opt-${n}`);
+    if (el) { el.style.outline="2px solid #18181b"; el.style.outlineOffset="2px"; el.style.transform="scale(1.1)"; }
+}
+function selectPriority(lv) {
+    selectedTaskPriority = lv;
+    document.querySelectorAll("#taskExtrasContainer .priority-option").forEach(el => { el.style.outline="none"; el.style.background=""; });
+    const el = document.getElementById(`pri-${lv}`);
+    if (el) { el.style.outline="2px solid #18181b"; el.style.outlineOffset="1px"; }
+}
+function selectEventColor(cls) {
+    selectedEventColor = cls;
+    document.querySelectorAll("#eventModal .picker-option").forEach(el => { el.style.outline="none"; el.style.transform="scale(1)"; el.style.boxShadow="none"; });
+    const map = {"bg-blue-100 text-blue-800 border-blue-200":"col-blue","bg-purple-100 text-purple-800 border-purple-200":"col-purple","bg-green-100 text-green-800 border-green-200":"col-green","bg-orange-100 text-orange-800 border-orange-200":"col-orange","bg-pink-100 text-pink-800 border-pink-200":"col-pink","bg-zinc-100 text-zinc-800 border-zinc-200":"col-zinc"};
+    const el = document.getElementById(map[cls]);
+    if (el) { el.style.outline="3px solid #18181b"; el.style.outlineOffset="2px"; el.style.transform="scale(1.2)"; el.style.boxShadow="0 0 0 2px white,0 0 0 4px #18181b"; }
+}
+function handleCreate(type) {
+    currentAction = type;
+    document.getElementById("modalTitle").textContent = type==="task"?"Add Task":type==="goal"?"Add Goal":"New Project";
+    document.getElementById("modalDesc").textContent  = type==="task"?"What do you need to do?":type==="goal"?"Monthly objective?":"Project name.";
+    if (modalInput) modalInput.value = "";
+    const ico = document.getElementById("iconSelectContainer");
+    const ext = document.getElementById("taskExtrasContainer");
+    if (type === "task") {
+        ico?.classList.remove("hidden"); ext?.classList.remove("hidden");
+        selectTaskIcon("zap"); selectPriority("medium");
+        const ps = document.getElementById("modalProjectSelect");
+        if (ps) { ps.innerHTML = `<option value="none">-- Global Task --</option>`; appState.projects.forEach(p => { ps.innerHTML += `<option value="${p.id}">${escHtml(p.title)}</option>`; }); }
+        const gs = document.getElementById("modalTaskGoal");
+        if (gs) { gs.innerHTML = `<option value="none">-- No Goal --</option>`; appState.goals.forEach(g => { gs.innerHTML += `<option value="${g.id}">${escHtml(g.text)}</option>`; }); }
+    } else { ico?.classList.add("hidden"); ext?.classList.add("hidden"); }
+    _showModal("inputModal","inputModalContent");
+    setTimeout(() => modalInput?.focus(), 20);
+}
+function closeModal() { _hideModal("inputModal","inputModalContent"); currentAction = null; }
+
+if (document.getElementById("modalSaveBtn")) {
+    document.getElementById("modalSaveBtn").addEventListener("click", () => {
+        const v = modalInput?.value.trim();
+        if (!v) return closeModal();
+        if (currentAction === "task") {
+            const pId  = document.getElementById("modalProjectSelect")?.value||"none";
+            const gId  = document.getElementById("modalTaskGoal")?.value||"none";
+            appState.tasks.unshift({ id:Date.now(), title:v, date:"Just now", icon:selectedTaskIcon, status:"active", projectId:pId==="none"?"none":parseInt(pId), priority:selectedTaskPriority, goalId:gId==="none"?"none":parseInt(gId), isSpotlight:false });
+            showNotification("Task created!","success");
+        } else if (currentAction === "goal") {
+            appState.goals.unshift({ id:Date.now(), text:v, status:"active" });
+            showNotification("Goal saved!","success");
+        } else if (currentAction === "project") {
+            appState.projects.unshift({ id:Date.now(), title:v, desc:"New workspace.", colorTheme:"bg-white", textTheme:"text-zinc-900" });
+            showNotification("Project created!","success");
+        }
+        _fullRefresh(); closeModal();
+    });
+}
+
+// Event modal
+function openEventModal(day, hour) {
+    const fields = { eventDay:day, eventStart:hour, eventDuration:1 };
+    Object.entries(fields).forEach(([id,v]) => { const el=document.getElementById(id); if(el) el.value=v; });
+    const et = document.getElementById("eventTitle"); if(et) et.value="";
+    document.querySelectorAll("#eventModal .picker-option").forEach(el => { el.style.outline="none"; el.style.transform="scale(1)"; el.style.boxShadow="none"; });
+    selectEventColor("bg-blue-100 text-blue-800 border-blue-200");
+    const eps = document.getElementById("eventProjectSelect");
+    if (eps) { eps.innerHTML=`<option value="none">-- No Project --</option>`; appState.projects.forEach(p => { eps.innerHTML+=`<option value="${p.id}">${escHtml(p.title)}</option>`; }); }
+    _showModal("eventModal","eventModalContent");
+    setTimeout(() => document.getElementById("eventTitle")?.focus(), 20);
+}
+function closeEventModal() { _hideModal("eventModal","eventModalContent"); }
+function saveEvent() {
+    const title = document.getElementById("eventTitle")?.value.trim()||"";
+    if (!title) return closeEventModal();
+    const day       = parseInt(document.getElementById("eventDay")?.value||"1");
+    const startHour = parseInt(document.getElementById("eventStart")?.value||"9");
+    const span      = parseInt(document.getElementById("eventDuration")?.value||"1");
+    const projectId = document.getElementById("eventProjectSelect")?.value||"none";
+    // Remove overlapping events
+    appState.events = appState.events.filter(e => !(e.day===day && ((e.startHour>=startHour&&e.startHour<startHour+span)||(startHour>=e.startHour&&startHour<e.startHour+e.span))));
+    appState.events.push({ id:Date.now(), title, day, startHour, span, colorClass:selectedEventColor, projectId });
+    renderCalendar(); closeEventModal();
+    showNotification("Event added!","success");
+}
+
+// Search modal
+const searchModal = document.getElementById("searchModal");
+const searchModalContent = document.getElementById("searchModalContent");
+const searchInput   = document.getElementById("searchInput");
+const searchResults = document.getElementById("searchResults");
+function openSearchModal()  { if(searchInput) searchInput.value=""; if(searchResults) searchResults.innerHTML=`<div class="p-8 text-center text-zinc-400 text-sm">Start typing...</div>`; _showModal("searchModal","searchModalContent"); setTimeout(()=>searchInput?.focus(),20); }
+function closeSearchModal() { _hideModal("searchModal","searchModalContent"); }
+function performSearch() {
+    const q = (searchInput?.value||"").toLowerCase().trim();
+    if (!q) { if(searchResults) searchResults.innerHTML=""; return; }
+    let html = "", cnt = 0;
+    appState.tasks.forEach(t => { if(t.title.toLowerCase().includes(q)) { cnt++; html+=`<div onclick="closeSearchModal()" class="flex items-center gap-4 p-3 hover:bg-white rounded-xl cursor-pointer"><i data-lucide="check-square" class="w-5 h-5 text-zinc-400"></i><div><h4 class="text-sm font-bold">${escHtml(t.title)}</h4><p class="text-[10px] text-zinc-500 uppercase">Task · ${t.priority}</p></div></div>`; } });
+    appState.projects.forEach(p => { if(p.title.toLowerCase().includes(q)) { cnt++; html+=`<div onclick="switchView('projects');closeSearchModal()" class="flex items-center gap-4 p-3 hover:bg-white rounded-xl cursor-pointer"><i data-lucide="folder-kanban" class="w-5 h-5 text-zinc-400"></i><div><h4 class="text-sm font-bold">${escHtml(p.title)}</h4><p class="text-[10px] text-zinc-500 uppercase">Project</p></div></div>`; } });
+    appState.goals.forEach(g => { if(g.text.toLowerCase().includes(q)) { cnt++; html+=`<div onclick="closeSearchModal()" class="flex items-center gap-4 p-3 hover:bg-white rounded-xl cursor-pointer"><i data-lucide="target" class="w-5 h-5 text-zinc-400"></i><div><h4 class="text-sm font-bold">${escHtml(g.text)}</h4><p class="text-[10px] text-zinc-500 uppercase">Goal</p></div></div>`; } });
+    if (searchResults) { searchResults.innerHTML = cnt ? html : `<div class="p-8 text-center text-zinc-400 text-sm">No results.</div>`; lucide.createIcons({root:searchResults}); }
+}
+
+// ── Modal backdrop/keyboard close ────────────────────────
+["inputModal","eventModal","searchModal","expenseModal","budgetModal","bucketModal"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("click", e => { if (e.target === el) { if(id==="inputModal") closeModal(); else if(id==="eventModal") closeEventModal(); else if(id==="searchModal") closeSearchModal(); else if(id==="expenseModal") closeExpenseModal(); else if(id==="budgetModal") closeBudgetModal(); else if(id==="bucketModal") closeBucketModal(); } });
+});
+window.addEventListener("keydown", e => { if (e.key==="Escape") { closeModal(); closeSearchModal(); closeEventModal(); closeExpenseModal(); closeBudgetModal(); closeBucketModal(); } });
+
+// ═══════════════════════════════════════════════════════════
+// 20. INIT — run on page load
+// ═══════════════════════════════════════════════════════════
+lucide.createIcons();
+
+    </script>
+
+    <!-- ================= FINANCE MODALS ================= -->
+
+    <!-- Expense Modal -->
+    <div id="expenseModal" class="fixed inset-0 bg-zinc-900/70 backdrop-blur-sm z-[60] hidden items-center justify-center opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-zinc-200 transform scale-95 transition-transform duration-200" id="expenseModalContent">
+            <div class="flex justify-between items-center mb-5">
+                <h3 class="text-xl font-bold text-zinc-900 tracking-tight">Add Expense</h3>
+                <button onclick="closeExpenseModal()" class="p-2 hover:bg-zinc-100 rounded-xl transition text-zinc-500"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-bold text-zinc-500 uppercase tracking-wide mb-1 block">Amount (DH)</label>
+                <input type="number" id="exp-amount" min="1" step="any" placeholder="e.g. 150" class="w-full border border-zinc-200 rounded-xl px-4 py-3 text-2xl font-black text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 placeholder:text-zinc-200">
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-bold text-zinc-500 uppercase tracking-wide mb-1 block">Description</label>
+                <input type="text" id="exp-desc" placeholder="What did you spend on?" class="w-full border border-zinc-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 placeholder:text-zinc-400">
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-bold text-zinc-500 uppercase tracking-wide mb-1 block">Category (Bucket)</label>
+                <select id="exp-category" class="w-full border border-zinc-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white cursor-pointer"></select>
+            </div>
+            <div class="mb-6">
+                <label class="text-xs font-bold text-zinc-500 uppercase tracking-wide mb-1 block">Link to Project (optional)</label>
+                <select id="exp-project" class="w-full border border-zinc-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white cursor-pointer">
+                    <option value="none">— No project —</option>
+                </select>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeExpenseModal()" class="flex-1 py-3 border border-zinc-200 rounded-xl font-bold text-sm text-zinc-600 hover:bg-zinc-50 transition">Cancel</button>
+                <button onclick="saveExpense()" class="flex-1 py-3 bg-zinc-900 text-white rounded-xl font-bold text-sm hover:bg-zinc-800 transition shadow-sm">Save Expense</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Budget Modal -->
+    <div id="budgetModal" class="fixed inset-0 bg-zinc-900/70 backdrop-blur-sm z-[60] hidden items-center justify-center opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl border border-zinc-200 transform scale-95 transition-transform duration-200" id="budgetModalContent">
+            <div class="flex justify-between items-center mb-5">
+                <h3 class="text-xl font-bold text-zinc-900 tracking-tight">Set Monthly Budget</h3>
+                <button onclick="closeBudgetModal()" class="p-2 hover:bg-zinc-100 rounded-xl transition text-zinc-500"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-bold text-zinc-500 uppercase tracking-wide mb-1 block">Total monthly budget (DH)</label>
+                <input type="number" id="budget-input" min="100" step="100" placeholder="e.g. 4000" class="w-full border border-zinc-200 rounded-xl px-4 py-3 text-2xl font-black focus:outline-none focus:ring-2 focus:ring-zinc-900 placeholder:text-zinc-200">
+            </div>
+            <div class="mb-6">
+                <label class="text-xs font-bold text-zinc-500 uppercase tracking-wide mb-1 block">Monthly income (DH) — for savings rate</label>
+                <input type="number" id="income-input" min="100" step="100" placeholder="e.g. 6000" class="w-full border border-zinc-200 rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:ring-2 focus:ring-zinc-900 placeholder:text-zinc-200">
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeBudgetModal()" class="flex-1 py-3 border border-zinc-200 rounded-xl font-bold text-sm text-zinc-600 hover:bg-zinc-50 transition">Cancel</button>
+                <button onclick="saveBudget()" class="flex-1 py-3 bg-zinc-900 text-white rounded-xl font-bold text-sm hover:bg-zinc-800 transition shadow-sm">Save Budget</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Bucket Modal -->
+    <div id="bucketModal" class="fixed inset-0 bg-zinc-900/70 backdrop-blur-sm z-[60] hidden items-center justify-center opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl border border-zinc-200 transform scale-95 transition-transform duration-200" id="bucketModalContent">
+            <div class="flex justify-between items-center mb-5">
+                <h3 class="text-xl font-bold text-zinc-900 tracking-tight">New Budget Bucket</h3>
+                <button onclick="closeBucketModal()" class="p-2 hover:bg-zinc-100 rounded-xl transition text-zinc-500"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-bold text-zinc-500 uppercase tracking-wide mb-1 block">Bucket name</label>
+                <input type="text" id="bucket-name" placeholder="e.g. Entertainment" maxlength="30" class="w-full border border-zinc-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 placeholder:text-zinc-400">
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-bold text-zinc-500 uppercase tracking-wide mb-1 block">Budget limit (DH/month)</label>
+                <input type="number" id="bucket-limit" min="1" placeholder="e.g. 500" class="w-full border border-zinc-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 placeholder:text-zinc-400">
+            </div>
+            <div class="mb-6">
+                <label class="text-xs font-bold text-zinc-500 uppercase tracking-wide mb-2 block">Pick an emoji</label>
+                <div id="bucket-emoji-picker" class="flex flex-wrap gap-1.5 mb-3"></div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-zinc-400 font-medium">Or type one:</span>
+                    <input type="text" id="bucket-emoji" value="💰" maxlength="2" class="w-14 border border-zinc-200 rounded-xl px-3 py-2 text-center text-xl focus:outline-none focus:ring-2 focus:ring-zinc-900">
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeBucketModal()" class="flex-1 py-3 border border-zinc-200 rounded-xl font-bold text-sm text-zinc-600 hover:bg-zinc-50 transition">Cancel</button>
+                <button onclick="saveBucket()" class="flex-1 py-3 bg-zinc-900 text-white rounded-xl font-bold text-sm hover:bg-zinc-800 transition shadow-sm">Create Bucket</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

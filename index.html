@@ -258,10 +258,48 @@
         .dark .round-checkbox:checked::after { color:#18181b !important; }
         /* Scrollbar */
         .dark ::-webkit-scrollbar-thumb { background:#3f3f46 !important; }
+        /* Notification panel dark mode */
+        .dark #notif-panel h3 { color:#f4f4f5 !important; }
+        .dark .notif-item p.text-sm { color:#e4e4e7 !important; }
+        .dark .notif-item p.text-\[10px\] { color:#52525b !important; }
+        .dark #notif-panel [style*="border-bottom"] { border-color:#27272a !important; }
+        /* Avatar overlay */
+        .dark #profile-avatar-img { border-color:#3f3f46 !important; }
         /* Finance bucket card hover */
         .bucket-card { transition:transform .15s,box-shadow .15s; }
         .bucket-card:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,.08); }
         .fin-bar { transition:width .6s cubic-bezier(.4,0,.2,1); }
+
+        /* ── Perf: GPU hints ── */
+        .view-section { contain:layout style; }
+        #tasks-container > div { will-change:transform; }
+
+        /* ── Notification Center ── */
+        #notif-panel {
+            position:fixed; top:68px; right:20px; width:360px; max-height:500px;
+            background:#fff; border:1px solid #e4e4e7; border-radius:1.5rem;
+            box-shadow:0 24px 64px rgba(0,0,0,.13); z-index:500;
+            overflow:hidden; display:flex; flex-direction:column;
+            transform:scale(.96) translateY(-8px); opacity:0; pointer-events:none;
+            transition:transform .18s cubic-bezier(.4,0,.2,1),opacity .18s ease;
+        }
+        #notif-panel.open { transform:scale(1) translateY(0); opacity:1; pointer-events:auto; }
+        .dark #notif-panel { background:#18181b; border-color:#2e2e32; box-shadow:0 24px 64px rgba(0,0,0,.5); }
+        .notif-item { padding:13px 16px; border-bottom:1px solid #f4f4f5; display:flex; gap:11px;
+            align-items:flex-start; transition:background .1s; }
+        .notif-item:last-child { border-bottom:none; }
+        .notif-item:hover { background:#fafafa; cursor:default; }
+        .notif-item.unread { border-left:3px solid #18181b; padding-left:13px; }
+        .dark .notif-item { border-color:#27272a; }
+        .dark .notif-item:hover { background:#222226; }
+        .dark .notif-item.unread { border-left-color:#e4e4e7; }
+        .notif-dot { width:7px; height:7px; border-radius:50%; background:#18181b; margin-top:5px; flex-shrink:0; }
+        .dark .notif-dot { background:#e4e4e7; }
+
+        /* ── Toast: raised above modals, no blur bleed ── */
+        #toastContainer { z-index:9999 !important; }
+        #toastContainer > div { backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+        .dark #toastContainer > div { background:#1c1c1e !important; border-color:#3f3f46 !important; color:#f4f4f5 !important; }
     </style>
 </head>
 <body class="antialiased text-zinc-800">
@@ -348,9 +386,12 @@
                         </div>
                     </div>
                     <button onclick="openSearchModal()" class="p-2.5 bg-white/80 rounded-full shadow-sm hover:bg-white hover:text-zinc-900 transition border border-white text-zinc-500"><i data-lucide="search" class="w-5 h-5"></i></button>
-                    <button onclick="showNotification('No new alerts')" class="p-2.5 bg-white/80 rounded-full shadow-sm hover:bg-white hover:text-zinc-900 transition border border-white relative text-zinc-500">
-                        <i data-lucide="bell" class="w-5 h-5"></i><span class="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full"></span>
-                    </button>
+                    <div class="relative">
+                        <button onclick="toggleNotifPanel(event)" id="notif-bell-btn" class="p-2.5 bg-white/80 rounded-full shadow-sm hover:bg-white hover:text-zinc-900 transition border border-white relative text-zinc-500">
+                            <i data-lucide="bell" class="w-5 h-5"></i>
+                            <span id="notif-badge" class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white hidden"></span>
+                        </button>
+                    </div>
                     <img onclick="switchView('profile')" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Dilan&backgroundColor=e5e7eb" id="header-avatar" alt="Avatar" class="w-10 h-10 rounded-full border-2 border-white shadow-sm cursor-pointer hover:ring-2 hover:ring-zinc-900 transition">
                 </div>
             </header>
@@ -702,7 +743,17 @@
                 <div id="view-profile" class="view-section flex-col gap-6">
                     <div class="bg-white p-8 rounded-[2rem] shadow-sm border border-zinc-100 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
                         <div class="absolute -right-20 -top-20 w-64 h-64 bg-zinc-900 rounded-full opacity-5 blur-3xl"></div>
-                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Dilan&backgroundColor=e5e7eb" id="profile-avatar-img" class="w-32 h-32 rounded-full border-4 border-white shadow-lg bg-zinc-100 z-10">
+                        <div class="relative z-10 group/av">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=User&backgroundColor=e5e7eb" id="profile-avatar-img" class="w-32 h-32 rounded-full border-4 border-white shadow-lg bg-zinc-100 object-cover select-none">
+                            <button onclick="document.getElementById('avatar-file-input').click()" class="absolute inset-0 rounded-full bg-black/50 flex flex-col items-center justify-center gap-1 opacity-0 group-hover/av:opacity-100 transition" title="Upload photo">
+                                <i data-lucide="camera" class="w-7 h-7 text-white"></i>
+                                <span class="text-[10px] text-white font-bold">Change</span>
+                            </button>
+                            <div id="avatar-spinner" class="hidden absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
+                                <div class="w-7 h-7 border-3 border-white/30 border-t-white rounded-full animate-spin" style="border-width:3px"></div>
+                            </div>
+                        </div>
+                        <input type="file" id="avatar-file-input" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" onchange="uploadAvatar(this)">
                         
                         <div class="text-center md:text-left z-10 flex-1">
                             <div class="flex items-center justify-center md:justify-start gap-3 mb-1">
@@ -1086,7 +1137,22 @@
     </div>
 
     <!-- Toast Container -->
-    <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+    <!-- ═══ NOTIFICATION CENTER PANEL ═══ -->
+    <div id="notif-panel" role="dialog" aria-label="Notifications">
+        <div class="flex items-center justify-between px-5 py-4" style="border-bottom:1px solid #f0f0f0">
+            <div class="flex items-center gap-2">
+                <h3 class="font-bold text-zinc-900 text-sm">Notifications</h3>
+                <span id="notif-unread-count" class="text-[10px] font-black bg-zinc-900 text-white px-1.5 py-0.5 rounded-full hidden">0</span>
+            </div>
+            <div class="flex gap-1">
+                <button onclick="markAllNotifsRead()" class="text-[11px] font-bold text-zinc-400 hover:text-zinc-800 px-2 py-1 hover:bg-zinc-100 rounded-lg transition">Mark read</button>
+                <button onclick="clearAllNotifs()" class="text-[11px] font-bold text-red-400 hover:text-red-600 px-2 py-1 hover:bg-red-50 rounded-lg transition">Clear all</button>
+            </div>
+        </div>
+        <div id="notif-list" class="overflow-y-auto" style="max-height:436px;"></div>
+    </div>
+
+    <div id="toastContainer" class="fixed bottom-6 right-6 flex flex-col gap-2 pointer-events-none" style="z-index:9999"></div>
 
     <!-- ================= JAVASCRIPT ================= -->
     <script>
@@ -1273,24 +1339,107 @@ function uid() { return currentUser?.id || null; }
 // ──────────────────────────────────────────────────────────────────
 // 3. NOTIFICATIONS
 // ──────────────────────────────────────────────────────────────────
-const _notifActive = new Set();
-function showNotification(msg, type = "info") {
-    if (!appState.settings.notifs) return;
+// ── Notification Center store ──────────────────────────────────
+const _notifHistory = [];   // { id, msg, type, time, read }
+const _notifActive  = new Set();
+let   _notifPanelOpen = false;
+
+function showNotification(msg, type = "info", persist = true) {
+    // Always store in history (except pure duplicates within 3 s)
+    if (persist && !_notifActive.has(msg + type)) {
+        const entry = { id: Date.now() + Math.random(), msg: String(msg), type, time: new Date(), read: false };
+        _notifHistory.unshift(entry);
+        if (_notifHistory.length > 80) _notifHistory.pop();
+        _renderNotifList();
+        _updateNotifBadge();
+    }
+
+    // Toast (fire-and-forget popup)
     if (_notifActive.has(msg)) return;
+    if (!appState.settings.notifs && type !== "error") return;
     _notifActive.add(msg);
     const icons  = { info:"info", success:"check-circle-2", warn:"alert-triangle", xp:"zap", error:"x-circle" };
-    const colors = { info:"text-blue-400", success:"text-green-400", warn:"text-yellow-400", xp:"text-yellow-300", error:"text-red-400" };
+    const colors = { info:"text-blue-400", success:"text-green-400", warn:"text-yellow-400", xp:"text-yellow-300", error:"text-red-500" };
     const el = document.createElement("div");
-    el.className = "bg-zinc-900 text-white px-5 py-3 rounded-2xl shadow-xl transform translate-y-10 opacity-0 transition-all duration-300 flex items-center gap-3 text-sm font-medium border border-zinc-700 max-w-xs";
+    el.className = "bg-zinc-900 text-white px-5 py-3 rounded-2xl shadow-2xl transform translate-y-10 opacity-0 transition-all duration-300 flex items-center gap-3 text-sm font-medium border border-zinc-700 max-w-xs pointer-events-auto";
     el.innerHTML = `<i data-lucide="${icons[type]||"info"}" class="w-4 h-4 ${colors[type]||"text-blue-400"} shrink-0"></i><span>${escHtml(String(msg))}</span>`;
     document.getElementById("toastContainer")?.appendChild(el);
     lucide.createIcons({ root: el });
-    requestAnimationFrame(() => el.classList.remove("translate-y-10","opacity-0"));
+    requestAnimationFrame(() => { el.classList.remove("translate-y-10","opacity-0"); });
+    const dur = type === "error" ? 5000 : 3000;
     setTimeout(() => {
         el.classList.add("opacity-0","translate-y-2");
         setTimeout(() => { el.remove(); _notifActive.delete(msg); }, 300);
-    }, 3000);
+    }, dur);
 }
+
+// ── Notification panel rendering ───────────────────────────────
+const _notifIcons  = { info:"info", success:"check-circle-2", warn:"alert-triangle", xp:"zap", error:"x-circle" };
+const _notifColors = { info:"#3b82f6", success:"#22c55e", warn:"#f59e0b", xp:"#eab308", error:"#ef4444" };
+
+function _renderNotifList() {
+    const list = document.getElementById("notif-list");
+    if (!list) return;
+    if (!_notifHistory.length) {
+        list.innerHTML = `<div class="flex flex-col items-center justify-center py-12 text-center"><div class="w-12 h-12 bg-zinc-100 rounded-full flex items-center justify-center mb-3"><i data-lucide="bell-off" class="w-6 h-6 text-zinc-400"></i></div><p class="text-sm text-zinc-400 font-medium">No notifications yet</p><p class="text-xs text-zinc-300 mt-1">Actions you take will appear here</p></div>`;
+        lucide.createIcons({ root: list });
+        return;
+    }
+    const timeAgo = t => { const s=Math.floor((Date.now()-t)/1000); if(s<60)return"Just now"; if(s<3600)return Math.floor(s/60)+"m ago"; if(s<86400)return Math.floor(s/3600)+"h ago"; return Math.floor(s/86400)+"d ago"; };
+    list.innerHTML = _notifHistory.slice(0, 50).map(n => `
+        <div class="notif-item ${n.read ? "" : "unread"}">
+            <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5" style="background:${_notifColors[n.type]||"#71717a"}20">
+                <i data-lucide="${_notifIcons[n.type]||"info"}" class="w-3.5 h-3.5" style="color:${_notifColors[n.type]||"#71717a"}"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-zinc-800 leading-snug">${escHtml(n.msg)}</p>
+                <p class="text-[10px] text-zinc-400 font-medium mt-0.5">${timeAgo(n.time)}</p>
+            </div>
+        </div>`).join("");
+    lucide.createIcons({ root: list });
+}
+
+function _updateNotifBadge() {
+    const badge = document.getElementById("notif-badge");
+    const count = document.getElementById("notif-unread-count");
+    const unread = _notifHistory.filter(n => !n.read).length;
+    if (badge)  { badge.classList.toggle("hidden", unread === 0); }
+    if (count)  { count.textContent = unread > 9 ? "9+" : unread; count.classList.toggle("hidden", unread === 0); }
+}
+
+function toggleNotifPanel(e) {
+    if (e) e.stopPropagation();
+    const panel = document.getElementById("notif-panel");
+    if (!panel) return;
+    _notifPanelOpen = !_notifPanelOpen;
+    panel.classList.toggle("open", _notifPanelOpen);
+    if (_notifPanelOpen) { _renderNotifList(); }
+}
+
+function markAllNotifsRead() {
+    _notifHistory.forEach(n => n.read = true);
+    _renderNotifList();
+    _updateNotifBadge();
+}
+
+function clearAllNotifs() {
+    _notifHistory.length = 0;
+    _renderNotifList();
+    _updateNotifBadge();
+    document.getElementById("notif-panel")?.classList.remove("open");
+    _notifPanelOpen = false;
+}
+
+// Close panel on outside click
+document.addEventListener("click", e => {
+    if (!_notifPanelOpen) return;
+    const panel = document.getElementById("notif-panel");
+    const btn   = document.getElementById("notif-bell-btn");
+    if (panel && !panel.contains(e.target) && btn && !btn.contains(e.target)) {
+        panel.classList.remove("open");
+        _notifPanelOpen = false;
+    }
+});
 
 // ──────────────────────────────────────────────────────────────────
 // 4. CHARTS
@@ -1397,6 +1546,8 @@ async function checkAllowedUser(email) {
 }
 
 async function bootApp() {
+    // Restore dark mode BEFORE anything renders — prevents flash
+    _restoreDarkMode();
     // Show auth screen first
     showAuthScreen("loading");
 
@@ -1450,6 +1601,15 @@ async function enterApp(user, profile) {
     await loadAllData();
     initCharts();
     updateUserNameUI();
+
+    // Sync settings toggle UI with restored state
+    if (appState.settings.darkmode) {
+        const sw = document.getElementById("sw-darkmode");
+        const k  = document.getElementById("sw-darkmode-k");
+        if (sw) sw.style.backgroundColor = "#22c55e";
+        if (k)  k.style.transform = "translateX(16px)";
+    }
+
     renderDashboard();
     showNotification(`Welcome back, ${appState.user.name}! 🔥`, "success");
 }
@@ -1679,6 +1839,10 @@ async function onbFinish() {
     await sb.upsert("finance_settings", { user_id: u.id, monthly_budget: 4000, monthly_income: 6000 });
 
     await enterApp(u, { name, role });
+    // Welcome notification stored in history
+    setTimeout(() => {
+        showNotification(`Welcome to iDraft, ${name}! Your workspace is ready. 🚀`, "success");
+    }, 800);
 }
 
 async function logout() {
@@ -1698,6 +1862,14 @@ async function logout() {
 function applyDarkMode(on) {
     document.documentElement.classList.toggle("dark", on);
     appState.settings.darkmode = on;
+    // Persist preference — survives refresh
+    try { localStorage.setItem("idraft_darkmode", on ? "1" : "0"); } catch(e) {}
+    // Update settings toggle UI
+    const sw = document.getElementById("sw-darkmode");
+    const k  = document.getElementById("sw-darkmode-k");
+    if (sw) sw.style.backgroundColor = on ? "#22c55e" : "#e4e4e7";
+    if (k)  k.style.transform = on ? "translateX(16px)" : "translateX(0)";
+    // Update chart colors
     if (lineChart) {
         lineChart.data.datasets[0].backgroundColor = on ? "#e4e4e7" : "#18181b";
         lineChart.data.datasets[1].borderColor = on ? "#71717a" : "#a1a1aa";
@@ -1710,6 +1882,18 @@ function applyDarkMode(on) {
         doughnutChart.update();
     }
 }
+
+function _restoreDarkMode() {
+    // Called immediately at boot — before any auth — so no flash
+    try {
+        const stored = localStorage.getItem("idraft_darkmode");
+        if (stored === "1") {
+            document.documentElement.classList.add("dark");
+            appState.settings.darkmode = true;
+        }
+    } catch(e) {}
+}
+
 function toggleSetting(key) {
     appState.settings[key] = !appState.settings[key];
     const on = appState.settings[key];
@@ -1799,8 +1983,9 @@ function updateDashboardStats() {
         if (el("month-progress-val")) el("month-progress-val").textContent = donePct + "%";
     }
     if (lineChart) {
-        lineChart.data.datasets[0].data = [0, 0, 0, 0, 0, done, done];
-        lineChart.data.datasets[1].data = [0, 0, 0, 0, 0, active, active];
+        // Only today's slot (index 6 = "Sun"/today) — no duplicate spike
+        lineChart.data.datasets[0].data = [0, 0, 0, 0, 0, 0, done];
+        lineChart.data.datasets[1].data = [0, 0, 0, 0, 0, 0, active];
         lineChart.update();
     }
 }
@@ -1841,7 +2026,7 @@ function renderTasks() {
         const d = document.createElement("div");
         d.className = "bg-white p-5 rounded-3xl shadow-sm border border-zinc-100 shrink-0 w-[240px] flex flex-col justify-between transition hover:-translate-y-1 hover:shadow-md cursor-grab active:cursor-grabbing select-none";
         d.draggable = true; d.dataset.taskId = t.id;
-        d.innerHTML = `<div><span class="text-[10px] ${linked?"bg-blue-50 text-blue-600 border-blue-100":"bg-zinc-100 text-zinc-600 border-zinc-200"} px-2 py-0.5 rounded-full border font-bold mb-3 inline-block">${linked?"Project":"Global"}</span><div class="flex justify-between items-start mb-2"><div class="w-10 h-10 bg-zinc-50 rounded-xl border border-zinc-100 flex items-center justify-center"><i data-lucide="${t.icon||"zap"}" class="w-5 h-5 text-zinc-600"></i></div><button onclick="markTaskDone(${t.id})" class="text-zinc-300 hover:text-green-500 hover:bg-green-50 p-1.5 rounded-lg transition"><i data-lucide="check-circle-2" class="w-5 h-5"></i></button></div><h3 class="font-bold text-zinc-900 text-sm mb-4 leading-snug">${escHtml(t.title)}${isHigh?` <i data-lucide="flame" class="w-4 h-4 text-orange-500 inline-block"></i>`:""}</h3></div><div class="flex justify-between items-center mt-auto border-t border-zinc-100 pt-3"><span class="text-xs text-zinc-400 font-medium flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${t.date}</span><button onclick="markTaskDone(${t.id})" class="w-8 h-8 bg-zinc-900 text-white rounded-lg flex items-center justify-center hover:bg-zinc-700 transition shadow-sm"><i data-lucide="check" class="w-4 h-4"></i></button></div>`;
+        d.innerHTML = `<div class="relative"><span class="text-[10px] ${linked?"bg-blue-50 text-blue-600 border-blue-100":"bg-zinc-100 text-zinc-600 border-zinc-200"} px-2 py-0.5 rounded-full border font-bold mb-3 inline-block">${linked?"Project":"Global"}</span><div class="flex justify-between items-start mb-2"><div class="w-10 h-10 bg-zinc-50 rounded-xl border border-zinc-100 flex items-center justify-center"><i data-lucide="${t.icon||"zap"}" class="w-5 h-5 text-zinc-600"></i></div><div class="flex gap-1"><button onclick="markTaskDone(${t.id})" class="text-zinc-300 hover:text-green-500 hover:bg-green-50 p-1.5 rounded-lg transition" title="Done"><i data-lucide="check-circle-2" class="w-5 h-5"></i></button><button onclick="deleteTask(${t.id})" class="text-zinc-200 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition" title="Delete"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div><h3 class="font-bold text-zinc-900 text-sm mb-4 leading-snug">${escHtml(t.title)}${isHigh?` <i data-lucide="flame" class="w-4 h-4 text-orange-500 inline-block"></i>`:""}</h3></div><div class="flex justify-between items-center mt-auto border-t border-zinc-100 pt-3"><span class="text-xs text-zinc-400 font-medium flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${t.date}</span><button onclick="markTaskDone(${t.id})" class="w-8 h-8 bg-zinc-900 text-white rounded-lg flex items-center justify-center hover:bg-zinc-700 transition shadow-sm" title="Complete"><i data-lucide="check" class="w-4 h-4"></i></button></div>`;
         c.appendChild(d);
     });
     lucide.createIcons(); initDashDrag();
@@ -2016,22 +2201,144 @@ function openDoc(id){
 }
 function updateDocTitle(){if(!activeNoteId)return;const doc=appState.docs.find(d=>d.id===activeNoteId);const ti=document.getElementById("doc-title-input");if(doc&&ti){doc.title=ti.value;renderDocsSidebar();saveDocContent();}}
 function deleteCurrentDoc(){if(!activeNoteId)return;const kids=appState.docs.filter(d=>d.parentId===activeNoteId).map(d=>d.id);appState.docs=appState.docs.filter(d=>d.id!==activeNoteId&&!kids.includes(d.id));activeNoteId=null;document.getElementById("doc-empty-state")?.classList.remove("hidden");document.getElementById("btn-add-subpage")?.classList.add("hidden");const bc=document.getElementById("doc-breadcrumbs");if(bc)bc.textContent="";renderDocsSidebar();showNotification("Page deleted","warn");}
-function saveDocContent(){if(!activeNoteId)return;const doc=appState.docs.find(d=>d.id===activeNoteId);const ed=document.getElementById("doc-editor");if(doc&&ed)doc.content=ed.innerHTML;}
+let _docSaveTimer = null;
+function saveDocContent(){
+    if(!activeNoteId) return;
+    // Debounce 400ms — avoids hammering on every keystroke
+    clearTimeout(_docSaveTimer);
+    _docSaveTimer = setTimeout(() => {
+        const doc = appState.docs.find(d => d.id === activeNoteId);
+        const ed  = document.getElementById("doc-editor");
+        if (doc && ed) doc.content = ed.innerHTML;
+    }, 400);
+}
 const _docEditor=document.getElementById("doc-editor");
-if(_docEditor){_docEditor.addEventListener("input",()=>{saveDocContent();updateWordCount();updateToolbarState();});_docEditor.addEventListener("keyup",updateToolbarState);_docEditor.addEventListener("mouseup",updateToolbarState);}
+if(_docEditor){
+    _docEditor.addEventListener("input",()=>{saveDocContent();updateWordCount();updateToolbarState();});
+    _docEditor.addEventListener("keyup",updateToolbarState);
+    _docEditor.addEventListener("mouseup",updateToolbarState);
+
+    // ── Fix: Enter inside blockquote / pre stays inside the block ──
+    _docEditor.addEventListener("keydown", e => {
+        if (e.key !== "Enter") return;
+        const sel = window.getSelection();
+        if (!sel || !sel.rangeCount) return;
+        const node = sel.anchorNode;
+        if (!node) return;
+
+        // Walk up to find if we are inside a blockquote or pre
+        let el = node.nodeType === 3 ? node.parentElement : node;
+        let inBlock = null;
+        while (el && el !== _docEditor) {
+            if (el.tagName === "BLOCKQUOTE" || el.tagName === "PRE") { inBlock = el; break; }
+            el = el.parentElement;
+        }
+        if (!inBlock) return;   // normal Enter behavior elsewhere
+
+        e.preventDefault();
+
+        if (inBlock.tagName === "PRE") {
+            // Insert a newline character inside the <pre>
+            document.execCommand("insertText", false, "\n");
+        } else {
+            // blockquote: insert a <br> to stay inside
+            document.execCommand("insertHTML", false, "<br>");
+        }
+        saveDocContent();
+    });
+}
 
 // ──────────────────────────────────────────────────────────────────
 // 17. PROFILE
 // ──────────────────────────────────────────────────────────────────
 function updateUserNameUI(){
-    const n=appState.user.name; const seed=encodeURIComponent(n);
-    const avatarUrl=currentUser?.user_metadata?.avatar_url||`https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}&backgroundColor=e5e7eb`;
+    const n=appState.user.name; const seed=encodeURIComponent(n||"User");
+    // Priority: custom uploaded avatar → Google account photo → generated avatar
+    const storedAvatar = _getStoredAvatar();
+    const avatarUrl = storedAvatar || currentUser?.user_metadata?.avatar_url
+        || `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}&backgroundColor=e5e7eb`;
     const display=document.getElementById("profile-name-display");
     const title=document.getElementById("page-title");
     if(display)display.textContent=n;
     if(title&&title.textContent.startsWith("Hi,"))title.textContent=`Hi, ${n}!`;
     const a1=document.getElementById("profile-avatar-img");if(a1)a1.src=avatarUrl;
     const a2=document.getElementById("header-avatar");if(a2)a2.src=avatarUrl;
+}
+
+function _getStoredAvatar() {
+    try { return localStorage.getItem("idraft_avatar_url") || null; } catch(e){ return null; }
+}
+
+async function uploadAvatar(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+    // Validate
+    if (file.size > 5 * 1024 * 1024) return showNotification("Image too large (max 5 MB)","warn");
+    if (!file.type.startsWith("image/")) return showNotification("Invalid file type","warn");
+
+    const spinner = document.getElementById("avatar-spinner");
+    if (spinner) { spinner.classList.remove("hidden"); spinner.classList.add("flex"); }
+
+    try {
+        const u = uid();
+        if (!u) throw new Error("Not logged in");
+
+        // Unique path per user to avoid collisions
+        const ext  = file.name.split(".").pop().toLowerCase().replace(/[^a-z]/g,"") || "jpg";
+        const path = `${u}/avatar.${ext}`;
+
+        // Upload to Supabase Storage "avatars" bucket
+        const formData = new FormData();
+        formData.append("file", file, `avatar.${ext}`);
+
+        const uploadRes = await fetch(
+            `${SUPA_URL}/storage/v1/object/avatars/${path}`,
+            {
+                method: "POST",
+                headers: {
+                    "apikey":        SUPA_KEY,
+                    "Authorization": `Bearer ${sb._session?.access_token || SUPA_KEY}`,
+                    "x-upsert":      "true"
+                },
+                body: formData
+            }
+        );
+
+        if (!uploadRes.ok) {
+            // Try PUT for upsert
+            const putRes = await fetch(
+                `${SUPA_URL}/storage/v1/object/avatars/${path}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "apikey":        SUPA_KEY,
+                        "Authorization": `Bearer ${sb._session?.access_token || SUPA_KEY}`,
+                        "Content-Type":  file.type
+                    },
+                    body: file
+                }
+            );
+            if (!putRes.ok) throw new Error("Upload failed");
+        }
+
+        // Get public URL
+        const publicUrl = `${SUPA_URL}/storage/v1/object/public/avatars/${path}?t=${Date.now()}`;
+
+        // Cache locally + update UI
+        try { localStorage.setItem("idraft_avatar_url", publicUrl); } catch(e){}
+        const a1 = document.getElementById("profile-avatar-img");
+        const a2 = document.getElementById("header-avatar");
+        if (a1) a1.src = publicUrl;
+        if (a2) a2.src = publicUrl;
+
+        showNotification("Profile photo updated ✓","success");
+    } catch(err) {
+        console.error("Avatar upload error:", err);
+        showNotification("Upload failed — try again","error");
+    } finally {
+        if (spinner) { spinner.classList.add("hidden"); spinner.classList.remove("flex"); }
+        input.value = "";   // reset so same file can be re-uploaded
+    }
 }
 function toggleProfileEdit(){document.getElementById("profile-name-display")?.classList.add("hidden");document.getElementById("btn-edit-profile")?.classList.add("hidden");const inp=document.getElementById("profile-name-input");inp?.classList.remove("hidden");if(inp){inp.value=appState.user.name;inp.focus();}document.getElementById("btn-save-profile")?.classList.remove("hidden");}
 function saveProfileName(){const v=document.getElementById("profile-name-input")?.value.trim().replace(/[<>"']/g,"").substring(0,32);if(v){appState.user.name=v;updateUserNameUI();if(uid())sb.update("profiles",`id=eq.${uid()}`,{name:v}).catch(()=>{});}document.getElementById("profile-name-display")?.classList.remove("hidden");document.getElementById("btn-edit-profile")?.classList.remove("hidden");document.getElementById("profile-name-input")?.classList.add("hidden");document.getElementById("btn-save-profile")?.classList.add("hidden");showNotification("Name updated!","success");}
@@ -2365,6 +2672,17 @@ window.addEventListener("keydown",e=>{if(e.key==="Escape"){closeModal();closeSea
 // ──────────────────────────────────────────────────────────────────
 // 22. BOOT
 // ──────────────────────────────────────────────────────────────────
+// ── Batched icon creation for performance ──────────────────
+let _iconQueue = null;
+const _createIconsDeferred = (root) => {
+    if (root) { lucide.createIcons({ root }); return; }
+    if (_iconQueue) return;
+    _iconQueue = requestAnimationFrame(() => {
+        _iconQueue = null;
+        lucide.createIcons();
+    });
+};
+
 lucide.createIcons();
 bootApp();
 

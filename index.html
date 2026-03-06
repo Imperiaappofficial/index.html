@@ -49,6 +49,10 @@
             overflow: hidden;
         }
 
+        /* Logo blend — removes white/black bg */
+        #sidebar-logo { mix-blend-mode: multiply; }
+        .dark #sidebar-logo { mix-blend-mode: screen; }
+
         /* Custom scrollbar optimized for performance */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }

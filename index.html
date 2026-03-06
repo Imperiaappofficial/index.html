@@ -3,11 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com https://mevobibpgzxzwefxdyiw.supabase.co https://api.dicebear.com https://lh3.googleusercontent.com; img-src 'self' data: blob: https:; connect-src 'self' https://mevobibpgzxzwefxdyiw.supabase.co; frame-ancestors 'none';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com https://mevobibpgzxzwefxdyiw.supabase.co https://api.dicebear.com https://lh3.googleusercontent.com https://imperia.one; img-src 'self' data: blob: https:; connect-src 'self' https://mevobibpgzxzwefxdyiw.supabase.co; frame-ancestors 'none';">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="X-Frame-Options" content="DENY">
     <meta name="referrer" content="strict-origin-when-cross-origin">
-    <title>iDraft</title>
+    <title>Imperia — Productivity OS</title>
+    <meta name="description" content="Imperia is your complete productivity OS. Tasks, goals, projects, finance tracker and gamification — built for Moroccan students and professionals.">
+    <meta name="application-name" content="Imperia">
+
+    <!-- Open Graph — required for Google OAuth App Verification -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Imperia">
+    <meta property="og:title" content="Imperia — Productivity OS">
+    <meta property="og:description" content="Your complete productivity OS. Tasks, goals, projects, finance tracker and gamification — built for Moroccan students and professionals.">
+    <meta property="og:url" content="https://imperia.one">
+    <meta property="og:image" content="https://imperia.one/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Imperia — Productivity OS">
+    <meta name="twitter:description" content="Your complete productivity OS built for Moroccan students and professionals.">
+    <meta name="twitter:image" content="https://imperia.one/og-image.png">
+
+    <link rel="canonical" href="https://imperia.one">
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js for graphs -->
@@ -338,8 +358,8 @@
             <div>
                 <!-- Logo -->
                 <div class="flex items-center gap-3 mb-10 px-2 cursor-pointer hover:opacity-80 transition" onclick="switchView('dashboard')">
-                    <i data-lucide="command" class="w-8 h-8 text-zinc-900"></i>
-                    <span class="text-2xl font-bold text-zinc-900 tracking-tight">iDraft</span>
+                    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAAA/ElEQVR4nO2VSw7CMAxE/bv/jRuzGNWyWhWcKHTlWSAg1OM3sQxRq9Vqtd6QiKw/u/wkn3rbWETGGH83FhFVzR/xmqGZWVWLrVSN3f3O5+7uHjfNzPimUrAalIigYuY7jiNiGGPkhn4XLBqDzMzwHq7MjBhwipw3E2dQ+NHDfGX0L7KiMZ0BAhcdBC6dkdSrTfw0k10CuFz/ZuOLq4gE4sIKm44aHnHNuZviWEETnaqqmcVIh1nM19QGnSDOk3w/QhLFkaY6cZ7ke6RYWHDdvzLBhKgjVaxrIkLgseC2GUd1SvMMetx9nBaJV/7UQAn02Cd53BZqtlqtVutZH80poqqyVIGSAAAAAElFTkSuQmCC" alt="Imperia" class="w-8 h-8 object-contain" id="sidebar-logo" data-light="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAAA/ElEQVR4nO2VSw7CMAxE/bv/jRuzGNWyWhWcKHTlWSAg1OM3sQxRq9Vqtd6QiKw/u/wkn3rbWETGGH83FhFVzR/xmqGZWVWLrVSN3f3O5+7uHjfNzPimUrAalIigYuY7jiNiGGPkhn4XLBqDzMzwHq7MjBhwipw3E2dQ+NHDfGX0L7KiMZ0BAhcdBC6dkdSrTfw0k10CuFz/ZuOLq4gE4sIKm44aHnHNuZviWEETnaqqmcVIh1nM19QGnSDOk3w/QhLFkaY6cZ7ke6RYWHDdvzLBhKgjVaxrIkLgseC2GUd1SvMMetx9nBaJV/7UQAn02Cd53BZqtlqtVutZH80poqqyVIGSAAAAAElFTkSuQmCC" data-dark="data:image/png;base64,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">
+                    <span class="text-2xl font-bold text-zinc-900 tracking-tight">Imperia</span>
                 </div>
 
                 <!-- Main Navigation -->
@@ -989,10 +1009,10 @@
                                 <div class="p-4 bg-blue-50 border border-blue-100 rounded-xl">
                                     <p class="font-bold text-sm text-blue-900 mb-2">Share your dashboard</p>
                                     <div class="flex gap-2">
-                                        <input type="text" id="share-link" value="https://idraft.app/share/your-workspace" readonly class="flex-1 bg-white border border-blue-200 rounded-lg px-3 py-2 text-xs text-zinc-500 outline-none select-all">
+                                        <input type="text" id="share-link" value="https://imperia.one/share/your-workspace" readonly class="flex-1 bg-white border border-blue-200 rounded-lg px-3 py-2 text-xs text-zinc-500 outline-none select-all">
                                         <button onclick="copyShareLink()" id="copy-btn" class="px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition flex items-center gap-1.5"><i data-lucide="copy" class="w-3 h-3"></i><span>Copy</span></button>
                                     </div>
-                                    <p class="text-[10px] text-zinc-400 mt-1.5">Share with friends to invite them to iDraft.</p>
+                                    <p class="text-[10px] text-zinc-400 mt-1.5">Share with friends to invite them to Imperia.</p>
                                 </div>
                                 <button onclick="showNotification('Invite dialog opened')" class="w-full py-3 flex items-center justify-center gap-2 border border-zinc-200 rounded-xl font-bold text-sm text-zinc-700 hover:bg-zinc-50 transition"><i data-lucide="users" class="w-4 h-4"></i> Invite Friends</button>
                             </div>
@@ -1003,7 +1023,7 @@
                             <i data-lucide="log-out" class="w-8 h-8 text-red-400 mb-3"></i>
                             <h3 class="font-bold text-lg text-red-900 mb-1">Sign Out</h3>
                             <p class="text-sm text-red-700/70 mb-6 text-center max-w-md">Disconnect from your session. Your data will be saved securely.</p>
-                            <button onclick="logout()" class="px-8 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 shadow-sm transition">Log out from iDraft</button>
+                            <button onclick="logout()" class="px-8 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 shadow-sm transition">Log out from Imperia</button>
                         </div>
                     </div>
                 </div>
@@ -1206,7 +1226,7 @@
     <!-- ================= JAVASCRIPT ================= -->
     <script>
 // ═══════════════════════════════════════════════════════════════════
-// iDraft v5 — Supabase-backed engine
+// Imperia — Supabase-backed engine
 // Auth: Google OAuth + allowed_users whitelist
 // Data: Full real-time CRUD against Supabase
 // ═══════════════════════════════════════════════════════════════════
@@ -1229,7 +1249,11 @@ const sb = {
 
     // ── Auth: Google OAuth ────────────────────────────────────────
     async signInWithGoogle() {
-        const redirectTo = encodeURIComponent(window.location.href.split("#")[0]);
+        // Always redirect to imperia.one in production; use current origin in dev
+        const _origin = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+            ? window.location.origin
+            : 'https://imperia.one';
+        const redirectTo = encodeURIComponent(_origin + '/');
         const url = `${SUPA_URL}/auth/v1/authorize?provider=google&redirect_to=${redirectTo}`;
         window.location.href = url;
     },
@@ -1406,7 +1430,7 @@ function _sessionOK() {
     const s = sb._session;
     if (!s || !s.access_token) return false;
     if (s.expires_at && Date.now()/1000 > s.expires_at - 30) {
-        console.warn("[iDraft] Session expired"); sb.signOut().catch(()=>{}); return false;
+        console.warn("[Imperia] Session expired"); sb.signOut().catch(()=>{}); return false;
     }
     return true;
 }
@@ -1705,6 +1729,15 @@ async function checkAllowedUser(email) {
     return rows && rows.length > 0;
 }
 
+// ── Privacy Policy (served at /#privacy for Google OAuth verification) ──
+function showPrivacyPage() {
+    document.title = "Privacy Policy — Imperia";
+    document.body.innerHTML = `<div style="max-width:760px;margin:0 auto;padding:40px 24px;font-family:Arial,sans-serif;color:#1a1a1a;line-height:1.7"><a href="/" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:#6b7280;font-size:14px;margin-bottom:32px">&#8592; Back to Imperia</a><h1 style="font-size:32px;font-weight:900;margin-bottom:4px">Privacy Policy</h1><p style="color:#6b7280;font-size:14px;margin-bottom:32px">Last updated: March 2026 &#183; Applies to imperia.one and all Imperia mobile applications</p><hr style="border:none;border-top:1px solid #e5e7eb;margin-bottom:32px"><h2 style="font-size:20px;font-weight:700;margin:28px 0 10px">1. Who We Are</h2><p>Imperia (&#34;we&#34;, &#34;our&#34;) is a productivity platform based in F&#232;s, Morocco. Contact: <a href="mailto:support@imperia.one">support@imperia.one</a></p><h2 style="font-size:20px;font-weight:700;margin:28px 0 10px">2. Data We Collect</h2><p><strong>Account data (Google Sign-In):</strong> Name, email, profile photo. We do not receive your password.</p><p><strong>User content:</strong> Tasks, goals, projects, events, documents, financial entries you create. This data is yours.</p><p><strong>Technical data:</strong> Browser type, device type, IP address (fraud detection only), access timestamps.</p><p><strong>Payment data:</strong> Processed by PayDunya. We do not store card details.</p><h2 style="font-size:20px;font-weight:700;margin:28px 0 10px">3. How We Use Your Data</h2><ul style="padding-left:20px"><li>To provide and maintain Imperia</li><li>To authenticate your account and verify paid access</li><li>To send transactional emails</li><li>To detect and prevent fraud</li></ul><p><strong>We do not sell your data. We do not use your data for advertising.</strong></p><h2 style="font-size:20px;font-weight:700;margin:28px 0 10px">4. Data Storage &amp; Security</h2><ul style="padding-left:20px"><li>Stored on Supabase (AWS EU), encrypted via HTTPS/TLS</li><li>Row Level Security: you only access your own data</li><li>JWT tokens expire automatically. No passwords stored.</li></ul><h2 style="font-size:20px;font-weight:700;margin:28px 0 10px">5. Data Retention</h2><ul style="padding-left:20px"><li>Account data: retained while account exists</li><li>Completed tasks: auto-deleted after 7 days</li><li>Account deletion: all data deleted within 30 days of request</li></ul><h2 style="font-size:20px;font-weight:700;margin:28px 0 10px">6. Your Rights (GDPR &amp; Moroccan Law 09-08)</h2><p>Right to access, correct, delete, or export your data. Email <a href="mailto:support@imperia.one">support@imperia.one</a>. Response within 30 days.</p><h2 style="font-size:20px;font-weight:700;margin:28px 0 10px">7. Cookies</h2><p>We use browser localStorage (not cookies) for session tokens and preferences. No third-party trackers, Google Analytics, or Facebook Pixel.</p><h2 style="font-size:20px;font-weight:700;margin:28px 0 10px">8. Third-Party Services</h2><table style="width:100%;border-collapse:collapse;font-size:14px"><tr style="background:#f9fafb"><th style="text-align:left;padding:8px;border:1px solid #e5e7eb">Service</th><th style="text-align:left;padding:8px;border:1px solid #e5e7eb">Purpose</th></tr><tr><td style="padding:8px;border:1px solid #e5e7eb">Supabase</td><td style="padding:8px;border:1px solid #e5e7eb">Database, auth, storage — supabase.com/privacy</td></tr><tr><td style="padding:8px;border:1px solid #e5e7eb">Google OAuth</td><td style="padding:8px;border:1px solid #e5e7eb">Sign-in — policies.google.com/privacy</td></tr><tr><td style="padding:8px;border:1px solid #e5e7eb">PayDunya</td><td style="padding:8px;border:1px solid #e5e7eb">Payments — paydunya.com/privacy</td></tr><tr><td style="padding:8px;border:1px solid #e5e7eb">Vercel</td><td style="padding:8px;border:1px solid #e5e7eb">Hosting — vercel.com/legal/privacy-policy</td></tr></table><h2 style="font-size:20px;font-weight:700;margin:28px 0 10px">9. Children</h2><p>Imperia is not directed at children under 13. Email <a href="mailto:support@imperia.one">support@imperia.one</a> if you believe a child has registered.</p><h2 style="font-size:20px;font-weight:700;margin:28px 0 10px">10. Contact</h2><p>Imperia &#183; F&#232;s, Morocco<br>Email: <a href="mailto:support@imperia.one">support@imperia.one</a><br>Website: <a href="https://imperia.one">https://imperia.one</a></p><hr style="border:none;border-top:1px solid #e5e7eb;margin:40px 0 16px"><p style="color:#9ca3af;font-size:12px">&#169; 2026 Imperia. All rights reserved.</p></div>`;
+}
+if (typeof window !== 'undefined' && window.location && window.location.hash === '#privacy') {
+    document.addEventListener('DOMContentLoaded', showPrivacyPage);
+}
+
 async function bootApp() {
     _restoreDarkMode();
     // Unlock Web Audio on first interaction (browser autoplay policy)
@@ -1834,7 +1867,7 @@ function showAuthScreen(state, email = "") {
 
         <!-- Title -->
         <div class="relative mb-10">
-            <h1 class="text-4xl font-black text-zinc-900 tracking-tight mb-3">iDraft</h1>
+            <div class="flex justify-center mb-4"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAABQCAIAAAABc2X6AAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAAC8klEQVR4nO2Z247jIBBEGxrH+f/PNQb2oeQSwt7MaNU4ibbPU8ZiYoq+ExHHcRzHcRzHcRzHcRzHcRznf2RZlpTS/e+N979SREIItda3vPo9glNKrbXWWox3b+ANglW1HcQYQwh3vt1e8G8EwJ9rrbXW1+tDCLYnYi84pfQiG6WUQgiwraqGEF57NdYYbs9ecK31RXAiXYUQVJW+raoXO4uRC8w3aQYtFmM8ax6sygBeluW8mA8/3cIiAqcVkUEGnRnPW2sppRjjEMk4l1KKWKsVc8GtNWyxtTb4NkWqKpIWD4VOLodC/vunC+Z2pTMOnJPC9n1n15FzxuJaq6r2xu+/yhB7l8YWVZXuWkoJIcBFkYeG9cjqOA6aHQb/AsEAGiAbmuVI0ZREG8KqpRRYPsYIzzcvwjJDMJTknEsp27ZRD5Izlfc23PcdwvAcAUy3tzWyfdKCDbnjUkpKaV1XORosqOpTGnwen3t3QCR/QVka2LYNNoQAhnHfSzOAZ09RsybSIcfCaCKCmkR5zMa9Dw9fYsvE4eEceyw5w3o02OevmtFUznLpS7UoTlAoXbdM+9/ArNby3BtDG5IQ8jMTda01xng5Y31HHT6PODHGfd+lm/5FBHWrT9o3XAbc4dI0HQsPrztQmbGglHKescyPYOK9IWcjOSoQqg57DIrJOfdd19QZeFYMPx4P9NJ9oqJt5XD7fmyCnWc79hQLc1rqr2PRZg4rqY3K++7qO+owyDnTnrzHev0vmBCR1RjJ5r49K4YxEohIPy39CBIYh0o8/IJemlvEh9/3Ff3kBMxv6qdcAHBIUFXY+czfohSNF697vmAelk7Mv/WMyN5ssG3D2D6GUUihtt9rb6s+h10OG2g2eYltqNk+7+Mujvc1gK0yzqJPaX1lGvyfmj/6Ln5ZlvMvCTgF/nkZnM/n89xXrutqG8b2Lr3v+6VBhku5S28/X2hu22a7vZt+qvzxRzPw6d7rOI7jOI7jOI7jOI7jOI5jzh/E4FngHSv72gAAAABJRU5ErkJggg==" alt="Imperia" class="w-20 h-20 object-contain"></div><h1 class="text-4xl font-black text-zinc-900 tracking-tight mb-3">Imperia</h1>
             <p class="text-zinc-400 text-sm leading-relaxed max-w-xs mx-auto">Your strategic workspace. Designed for operators who build serious things.</p>
         </div>
 
@@ -1861,7 +1894,7 @@ function showAuthScreen(state, email = "") {
             <i data-lucide="arrow-right" class="w-4 h-4 ml-auto group-hover:translate-x-1 transition-transform"></i>
         </button>
 
-        <p class="text-[11px] text-zinc-300 mt-2">iDraft v5.0 · Powered by Supabase</p>
+        <p class="text-[11px] text-zinc-300 mt-2">Imperia · <a href="/#privacy" style="color:#9ca3af;text-decoration:underline" target="_blank">Privacy Policy</a></p>
     </div>`;
     lucide.createIcons({ root: lc });
 }
@@ -1887,7 +1920,7 @@ function showOnboarding(user) {
                 <div class="w-8 h-8 bg-zinc-900 text-white rounded-xl flex items-center justify-center text-xs font-black">1</div>
                 <span class="text-xs font-bold text-zinc-400 uppercase tracking-widest">Step 1 of 3</span>
             </div>
-            <h2 class="text-3xl font-black text-zinc-900 mb-2 tracking-tight">Welcome to iDraft.</h2>
+            <h2 class="text-3xl font-black text-zinc-900 mb-2 tracking-tight">Welcome to Imperia.</h2>
             <p class="text-zinc-400 text-sm mb-8">Let's set up your workspace in 60 seconds. No fluff.</p>
 
             ${user.user_metadata?.avatar_url ? `<div class="flex justify-center mb-6"><img src="${user.user_metadata.avatar_url}" class="w-20 h-20 rounded-full border-4 border-zinc-100 shadow-md"></div>` : ""}
@@ -2014,7 +2047,7 @@ async function onbFinish() {
     await enterApp(u, { name, role });
     // Welcome notification stored in history
     setTimeout(() => {
-        showNotification(`Welcome to iDraft, ${name}! Your workspace is ready. 🚀`, "success");
+        showNotification(`Welcome to Imperia, ${name}! Your workspace is ready. 🚀`, "success");
     }, 800);
 }
 
@@ -2033,6 +2066,8 @@ async function logout() {
 // 8. DARK MODE
 // ──────────────────────────────────────────────────────────────────
 function applyDarkMode(on) {
+    const sLogo = document.getElementById("sidebar-logo");
+    if (sLogo) sLogo.src = on ? sLogo.dataset.dark : sLogo.dataset.light;
     document.documentElement.classList.toggle("dark", on);
     appState.settings.darkmode = on;
     // Persist preference — survives refresh
@@ -3014,7 +3049,7 @@ function exportExpensesCSV(){
     const rows=[["Date","Description","Amount (DH)","Category","Project"]];
     appState.finance.expenses.forEach(e=>{const b=appState.finance.buckets.find(x=>x.id===e.bucket);const p=appState.projects.find(x=>x.id==e.projectId);rows.push([e.date,e.desc,e.amount,b?.name||e.bucket,p?.title||""]);});
     const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
-    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="idraft-expenses.csv";a.click();
+    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="imperia-expenses.csv";a.click();
     showNotification("CSV exported ✓","success");
 }
 
